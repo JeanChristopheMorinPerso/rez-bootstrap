@@ -4,6 +4,7 @@ import typing
 import logging
 import tarfile
 import argparse
+import functools
 import collections
 import dataclasses
 import concurrent.futures
@@ -37,10 +38,18 @@ def setupParser(parser: argparse.ArgumentParser) -> None:
         help="List available python versions",
     )
 
+    parser.add_argument("-a", "--arch", help="Architecture (x86_64, etc)")
+    parser.add_argument(
+        "-i", "--implementation", help="Python implementation (cpython, pypy, etc)"
+    )
+    parser.add_argument("-v", "--version", help="Python version")
+    parser.add_argument("-t", "--triplet", help="LLVM host triplet")
+
 
 def run(args: argparse.Namespace) -> int:
     _LOG.info("Fetching list of assets from GH")
     interpreters = Interpreters()
+    interpreters.initialize()
 
     if args.list_available_versions:
         table = rich.table.Table(
@@ -114,7 +123,13 @@ class Variant:
 
 
 class Interpreters:
-    def __init__(self):
+
+    def __init__(self) -> None:
+        self.variants: typing.List[Variant] = []
+        self._groups: typing.Dict[typing.Tuple, typing.List[Variant]] = {}
+        self._data: typing.Dict[str, typing.Any] = {}
+
+    def initialize(self):
         with requests.get(
             "https://api.github.com/repos/indygreg/python-build-standalone/releases/latest",
             headers={"Accept": "application/json"},
@@ -146,7 +161,6 @@ class Interpreters:
                 )
                 variants.append(variant)
             elif match2 := re.match(FULL_REGEX, name):
-                print(match2.groupdict()["config"])
                 variant = Variant(
                     **match2.groupdict(),
                     flavor="full",

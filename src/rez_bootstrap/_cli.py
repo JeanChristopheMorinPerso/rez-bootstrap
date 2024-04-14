@@ -1,3 +1,4 @@
+import typing
 import logging
 import argparse
 import importlib.metadata
@@ -5,7 +6,7 @@ import importlib.metadata
 import rez_bootstrap._python
 
 
-def parseArgs() -> argparse.Namespace:
+def parseArgs() -> typing.Tuple[argparse.ArgumentParser, argparse.Namespace]:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-v",
@@ -14,16 +15,19 @@ def parseArgs() -> argparse.Namespace:
         version=importlib.metadata.version(__package__),
     )
 
+    parser.add_argument("-p", "--prefix", help="prefix")
+    parser.add_argument("-r", "--release", help="release")
+
     modules = [rez_bootstrap._python]
 
     for module in modules:
-        subparsers = parser.add_subparsers()
+        subparsers = parser.add_subparsers(title="modules")
         name, args = module.getParserArgs()
         subparser = subparsers.add_parser(name, **args)
         module.setupParser(subparser)
         subparser.set_defaults(func=module.run)
 
-    return parser.parse_args()
+    return parser, parser.parse_args()
 
 
 def run():
@@ -33,7 +37,8 @@ def run():
     rootLogger.addHandler(handler)
     rootLogger.setLevel(logging.INFO)
 
-    args = parseArgs()
-    logging.getLogger(__name__).info("asd")
+    parser, args = parseArgs()
     if hasattr(args, "func"):
         args.func(args)
+    else:
+        parser.print_help()
