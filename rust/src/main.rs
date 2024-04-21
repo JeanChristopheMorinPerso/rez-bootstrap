@@ -133,7 +133,13 @@ fn get_config_order(config: &str) -> Result<ConfigOrder, Box<dyn std::error::Err
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let client = reqwest::Client::new();
+    // Note that a user-agent mandatory for all GitHub API requests.
+    // requests doens't have a default user-agent.
+    // It's also a good idea and makes us a good internet citizen.
+    let client = reqwest::ClientBuilder::new()
+        .user_agent("rez-bootstrap/0.1.0")
+        .build()
+        .unwrap();
 
     let release = get_release(&client)
         .unwrap_or_else(|error| {
