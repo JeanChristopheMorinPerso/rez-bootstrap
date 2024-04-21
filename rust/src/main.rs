@@ -141,6 +141,7 @@ async fn main() {
         .build()
         .unwrap();
 
+    println!("Getting latest release of python-standalone-build");
     let release = get_release(&client)
         .unwrap_or_else(|error| {
             eprintln!("Failed to get release: {:?}", error);
@@ -246,25 +247,56 @@ async fn main() {
     //     let data: Vec<_> = par_iter.collect();
     // })
 
+    println!(
+        "Fetching additional information for {} interpreters",
+        install_only_interpreters.len()
+    );
+
     // Try with futures: https://stackoverflow.com/questions/51044467/how-can-i-perform-parallel-asynchronous-http-get-requests-with-reqwest
-    let asd = futures::stream::iter(install_only_interpreters)
-        .map(|interpreter| {
+    let mut installable_interpreters = futures::stream::iter(install_only_interpreters)
+        .map(|mut interpreter| {
             let client = &client;
             async move {
                 let interpreter_implemented = interpreter.interpreter_implemented.clone().unwrap();
                 let info = read_info_json(&client, interpreter_implemented.url)
                     .await
                     .unwrap();
-                println!("  {:?}", info);
+                interpreter.info = Some(info.clone());
+                interpreter.config = interpreter_implemented.config.clone();
+                return interpreter;
             }
         })
-        .buffer_unordered(20);
-    asd.for_each(|b| async {}).await;
+        .buffer_unordered(20)
+        .collect::<Vec<Interpreter>>()
+        .await;
+
+    println!("Sorting interpreters");
+    installable_interpreters.sort_by(|a: &Interpreter, b: &Interpreter| {
+        human_sort::compare(
+            &format!("{}-{}-{}", a.implementation, a.python_version, a.triple),
+            &format!("{}-{}-{}", b.implementation, b.python_version, b.triple),
+        )
+    });
+
+    for interpreter in installable_interpreters {
+        println!(
+            "{} {} {} ({})",
+            interpreter.implementation,
+            interpreter.python_version,
+            interpreter.triple,
+            interpreter.config
+        );
+        println!("  info: {:?}", interpreter.info.unwrap());
+    }
+    // futures
+    //     .for_each(|b: Interpreter| {
+    //         println!("  data: {:?}", b);
+    //     })
+    //     .await;
 }
 
 // https://github.com/astral-sh/uv/blob/main/crates/uv-extract/src/stream.rs#L154
 async fn read_info_json(client: &reqwest::Client, url: String) -> anyhow::Result<PythonJSON> {
-    println!("Reading info from {}", url);
     // https://edgarluque.com/blog/zstd-streaming-in-rust/
     let response = client.get(url).send().await.unwrap();
 
