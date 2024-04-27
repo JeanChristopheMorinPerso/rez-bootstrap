@@ -37,37 +37,12 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 		}
 	}
 
-	inputChannel := make(chan Interpreter)
-	outputChannel := make(chan Interpreter)
-
+	// https://pkg.go.dev/golang.org/x/sync/errgroup#example-Group-Pipeline.
 	errGroup, ctx := errgroup.WithContext(context.Background())
-	// errGroup.SetLimit(4)
 
-	for i := 0; i < 100; i++ {
-		// workerNumber := i
-		errGroup.Go(func() error {
-			for interpreter := range inputChannel {
-				info, err := GetPythonInfo(interpreter.Url)
-				if err != nil {
-					return fmt.Errorf("failed to get python info for %s: %w", interpreter.Url, err)
-				}
-
-				if err := ctx.Err(); err != nil {
-					return err
-				}
-
-				interpreter.Info = info
-				outputChannel <- interpreter
-			}
-			// fmt.Println("worker", workerNumber, "processed all work on channel")
-			return nil
-		})
-	}
-
+	inputChannel := make(chan Interpreter)
 	errGroup.Go(func() error {
 		defer close(inputChannel)
-
-		done := ctx.Done()
 
 		for _, interpreter := range installOnlyInterpreters {
 			if err := ctx.Err(); err != nil {
@@ -87,26 +62,46 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 			select {
 			case inputChannel <- bestMatch:
 				continue
-			case <-done:
-				break
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
-		return ctx.Err()
+		return nil
 	})
 
-	var err error
+	// Start a fixed number of goroutines to get the PYTHON.json files.
+	outputChannel := make(chan Interpreter)
+	for i := 0; i < 10; i++ {
+		errGroup.Go(func() error {
+			for interpreter := range inputChannel {
+				info, err := GetPythonInfo(interpreter.Url)
+				if err != nil {
+					return fmt.Errorf("failed to get python info for %s: %w", interpreter.Url, err)
+				}
+
+				interpreter.Info = info
+				select {
+				case outputChannel <- interpreter:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+			return nil
+		})
+	}
+
 	go func() {
-		err = errGroup.Wait()
+		errGroup.Wait()
 		close(outputChannel)
 	}()
-
-	if err != nil {
-		return nil, fmt.Errorf("errgroup error: %w", err)
-	}
 
 	interpreters := []Interpreter{}
 	for interpreter := range outputChannel {
 		interpreters = append(interpreters, interpreter)
+	}
+
+	if err := errGroup.Wait(); err != nil {
+		return nil, fmt.Errorf("errgroup error: %w", err)
 	}
 
 	return interpreters, nil
