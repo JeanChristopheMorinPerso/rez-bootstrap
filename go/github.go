@@ -6,6 +6,16 @@ import (
 	"net/http"
 )
 
+type GitHubReleaseAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+}
+
+// / A GitHub release.
+type GitHubRelease struct {
+	Assets []GitHubReleaseAsset `json:"assets"`
+}
+
 func GetLatestRelease() (GitHubRelease, error) {
 	var release GitHubRelease
 

@@ -14,7 +14,42 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
+type InterpreterFlavor int
+
+const (
+	FlavorFull InterpreterFlavor = iota
+	FlavorInstallOnly
+)
+
+type PythonJSON struct {
+	AppleSDKDeploymentTarget string   `json:"apple_sdk_deployment_target"`
+	CRTFeatures              []string `json:"crt_features"`
+}
+
+type Interpreter struct {
+	Implementation         string
+	PythonVersion          string
+	GitHubRelease          string
+	Triple                 string
+	Config                 Config
+	Flavor                 InterpreterFlavor
+	Url                    string
+	Info                   PythonJSON
+	InterpreterImplemented *Interpreter
+}
+
+func (i Interpreter) GetKey() string {
+	return fmt.Sprintf("%s-%s+%s-%s", i.Implementation, i.PythonVersion, i.GitHubRelease, i.Triple)
+}
+
+func GetBestInterpreter(interpreters []Interpreter) *Interpreter {
+	// Sort by config. The first item will be the best match.
+	sort.Sort(ByConfig(interpreters))
+
+	return &interpreters[0]
+}
+
+func GetInterpreters(release GitHubRelease, threads int) ([]Interpreter, error) {
 	groups := map[string][]Interpreter{}
 	installOnlyInterpreters := []Interpreter{}
 
@@ -32,9 +67,15 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 		case FlavorInstallOnly:
 			installOnlyInterpreters = append(installOnlyInterpreters, interpreter)
 		case FlavorFull:
-			key := fmt.Sprintf("%s-%s+%s-%s", interpreter.Implementation, interpreter.PythonVersion, interpreter.GitHubRelease, interpreter.Triple)
+			key := interpreter.GetKey()
 			groups[key] = append(groups[key], interpreter)
 		}
+	}
+
+	// Cap the number of threads to not create more goroutines than necessary.
+	if threads > len(installOnlyInterpreters) {
+		threads = len(installOnlyInterpreters)
+		fmt.Printf("Capping number of threads to %d\n", threads)
 	}
 
 	// https://pkg.go.dev/golang.org/x/sync/errgroup#example-Group-Pipeline.
@@ -49,18 +90,10 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 				return err
 			}
 
-			groupKey := fmt.Sprintf("%s-%s+%s-%s", interpreter.Implementation, interpreter.PythonVersion, interpreter.GitHubRelease, interpreter.Triple)
-			group := groups[groupKey]
-
-			// Sort by config. The first item will be the best match.
-			sort.Sort(ByConfig(group))
-
-			bestMatch := group[0]
-
-			interpreter.InterpreterImplemented = &bestMatch
+			interpreter.InterpreterImplemented = GetBestInterpreter(groups[interpreter.GetKey()])
 
 			select {
-			case inputChannel <- bestMatch:
+			case inputChannel <- *interpreter.InterpreterImplemented:
 				continue
 			case <-ctx.Done():
 				return ctx.Err()
@@ -71,7 +104,7 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 
 	// Start a fixed number of goroutines to get the PYTHON.json files.
 	outputChannel := make(chan Interpreter)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < threads; i++ {
 		errGroup.Go(func() error {
 			for interpreter := range inputChannel {
 				info, err := GetPythonInfo(interpreter.Url)
@@ -107,6 +140,8 @@ func GetInterpreters(release GitHubRelease) ([]Interpreter, error) {
 	return interpreters, nil
 }
 
+// GetPythonInfo reads the python/PYTHON.json file inside an archive. The content
+// is streamed and only the necessary bits are read.
 func GetPythonInfo(url string) (PythonJSON, error) {
 	var pythonJSON PythonJSON
 

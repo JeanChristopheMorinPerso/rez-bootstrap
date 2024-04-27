@@ -3,41 +3,10 @@ package main
 import (
 	"fmt"
 	"regexp"
+	"runtime"
+
+	"github.com/spf13/cobra"
 )
-
-type GitHubReleaseAsset struct {
-	Name               string `json:"name"`
-	BrowserDownloadURL string `json:"browser_download_url"`
-}
-
-// / A GitHub release.
-type GitHubRelease struct {
-	Assets []GitHubReleaseAsset `json:"assets"`
-}
-
-type InterpreterFlavor int
-
-const (
-	FlavorFull InterpreterFlavor = iota
-	FlavorInstallOnly
-)
-
-type PythonJSON struct {
-	AppleSDKDeploymentTarget string   `json:"apple_sdk_deployment_target"`
-	CRTFeatures              []string `json:"crt_features"`
-}
-
-type Interpreter struct {
-	Implementation         string
-	PythonVersion          string
-	GitHubRelease          string
-	Triple                 string
-	Config                 Config
-	Flavor                 InterpreterFlavor
-	Url                    string
-	Info                   PythonJSON
-	InterpreterImplemented *Interpreter
-}
 
 var fullRegex = regexp.MustCompile(`^(?P<implementation>\w+)-(?P<pythonVersion>.*)\+(?P<githubRelease>\d{8})-(?P<triple>(?:-?[a-zA-Z0-9_])+)-(?P<config>debug|pgo\+lto|lto|noopt|pgo)-full.tar.zst$`)
 var installOnlyRegex = regexp.MustCompile(`^(?P<implementation>\w+)-(?P<pythonVersion>.*)\+(?P<githubRelease>\d{8})-(?P<triple>(?:-?[a-zA-Z0-9_])+)-install_only\.tar\.gz$`)
@@ -81,17 +50,31 @@ func parseAsset(asset GitHubReleaseAsset) (Interpreter, error) {
 }
 
 func main() {
-	release, err := GetLatestRelease()
-	if err != nil {
-		panic(err)
+	var threads int
+
+	var rootCmd = &cobra.Command{
+		Use:   "rez-bootstrap",
+		Short: "A tool to bootstrap rez",
+		Long:  "A tool to bootstrap rez",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			release, err := GetLatestRelease()
+			if err != nil {
+				return err
+			}
+
+			interpreters, err := GetInterpreters(release, threads)
+			if err != nil {
+				return err
+			}
+
+			for _, interpreter := range interpreters {
+				fmt.Printf("%s, %+v\n", interpreter.GetKey(), interpreter.Info)
+			}
+			return nil
+		},
 	}
 
-	interpreters, err := GetInterpreters(release)
-	if err != nil {
-		panic(err)
-	}
+	rootCmd.Flags().IntVarP(&threads, "threads", "t", runtime.NumCPU(), "Number of threads to use")
 
-	for _, interpreter := range interpreters {
-		fmt.Printf("%+v\n", interpreter.Info)
-	}
+	rootCmd.Execute()
 }
