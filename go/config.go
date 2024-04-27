@@ -4,6 +4,8 @@ import "fmt"
 
 type Config int
 
+// Note that the order is significant.
+// We use the order to determine which interpreter is the most optmized.
 const (
 	PgoLto Config = iota
 	PGO
@@ -34,7 +36,7 @@ func ConfigFromString(s string) (Config, error) {
 	case "":
 		return Empty, nil
 	default:
-		return -1, fmt.Errorf("unknown config: %s", s)
+		return -1, fmt.Errorf("unknown config: %q", s)
 	}
 }
 

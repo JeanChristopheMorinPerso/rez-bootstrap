@@ -38,10 +38,12 @@ type Interpreter struct {
 	InterpreterImplemented *Interpreter
 }
 
+// GetKey return a key that represents the interpreter in a "unique" way.
 func (i Interpreter) GetKey() string {
 	return fmt.Sprintf("%s-%s+%s-%s", i.Implementation, i.PythonVersion, i.GitHubRelease, i.Triple)
 }
 
+// GetBestInterpreter gets the interpreter that has the most optimized config.
 func GetBestInterpreter(interpreters []Interpreter) *Interpreter {
 	// Sort by config. The first item will be the best match.
 	sort.Sort(ByConfig(interpreters))
@@ -49,6 +51,7 @@ func GetBestInterpreter(interpreters []Interpreter) *Interpreter {
 	return &interpreters[0]
 }
 
+// GetInterpreters gets the interpreters from a GitHub release.
 func GetInterpreters(release GitHubRelease, threads int) ([]Interpreter, error) {
 	groups := map[string][]Interpreter{}
 	installOnlyInterpreters := []Interpreter{}
@@ -58,7 +61,7 @@ func GetInterpreters(release GitHubRelease, threads int) ([]Interpreter, error) 
 			continue
 		}
 
-		interpreter, err := parseAsset(asset)
+		interpreter, err := asset.Parse()
 		if err != nil {
 			return installOnlyInterpreters, fmt.Errorf("failed to parse asset %s: %w", asset.Name, err)
 		}
