@@ -56,6 +56,7 @@
 - [ ] Test filesystem changes, interrupted installs, and recovery paths.
 - [ ] Define stable JSON schemas before consumers depend on them.
 - [ ] Add release packaging and installation instructions for `rezup`.
+- [ ] Ad-hoc code-sign macOS binaries with `codesign --sign -` and document the resulting Gatekeeper limitations; Developer ID signing and notarization are not planned.
 
 ## Out of scope
 
