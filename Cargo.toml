@@ -1,0 +1,17 @@
+[package]
+name = "rezup"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Bootstrap and manage Rez installations"
+
+[[bin]]
+name = "rezup"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
