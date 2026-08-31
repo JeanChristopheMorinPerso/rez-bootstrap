@@ -134,7 +134,6 @@ fn missing_and_invalid_arguments_are_rejected() {
 fn remaining_leaf_actions_return_stub_errors() {
     for (args, action) in [
         (&["bootstrap"][..], "rezup bootstrap"),
-        (&["list", "--json"][..], "rezup list"),
         (&["update"][..], "rezup update"),
         (&["self", "update"][..], "rezup self update"),
     ] {

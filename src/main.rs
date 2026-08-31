@@ -3,6 +3,9 @@ use std::process::ExitCode;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+mod http;
+mod list;
+
 #[derive(Debug, Parser)]
 #[command(name = "rezup", version, about)]
 struct Cli {
@@ -160,12 +163,11 @@ enum SelfCommand {
     Update,
 }
 
-impl Cli {
+impl Command {
     fn action(self) -> &'static str {
-        match self.command {
+        match self {
             Command::Bootstrap => "rezup bootstrap",
             Command::Install(_) => "rezup install",
-            Command::List(_) => "rezup list",
             Command::Update => "rezup update",
             Command::Package(package) => match package.command {
                 PackageCommand::Install(install) => match install.command {
@@ -179,12 +181,28 @@ impl Cli {
             Command::Self_(self_command) => match self_command.command {
                 SelfCommand::Update => "rezup self update",
             },
+            Command::List(_) => "rezup list",
+        }
+    }
+}
+
+impl Cli {
+    fn run(self) -> Result<(), String> {
+        match self.command {
+            Command::List(args) => {
+                list::run(args.json).map_err(|error| format!("rezup list failed: {error}"))
+            }
+            command => Err(format!("{} is not implemented", command.action())),
         }
     }
 }
 
 fn main() -> ExitCode {
-    let action = Cli::parse().action();
-    eprintln!("error: {action} is not implemented");
-    ExitCode::FAILURE
+    match Cli::parse().run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("error: {error}");
+            ExitCode::FAILURE
+        }
+    }
 }
