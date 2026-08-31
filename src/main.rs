@@ -7,8 +7,11 @@ mod http;
 mod list;
 
 #[derive(Debug, Parser)]
-#[command(name = "rezup", version, about)]
+#[command(name = "rezup", version, about, disable_version_flag = true)]
 struct Cli {
+    /// Print version.
+    #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
+    version: Option<bool>,
     #[command(subcommand)]
     command: Command,
 }

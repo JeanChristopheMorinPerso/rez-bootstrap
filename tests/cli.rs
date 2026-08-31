@@ -15,14 +15,18 @@ fn top_level_help_and_version_succeed() {
             "Bootstrap and manage Rez installations",
         ))
         .stdout(predicate::str::contains("package"))
+        .stdout(predicate::str::contains("-v, --version"))
+        .stdout(predicate::str::contains("-V, --version").not())
         .stderr(predicate::str::is_empty());
 
-    rezup()
-        .arg("--version")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("rezup 0.1.0"))
-        .stderr(predicate::str::is_empty());
+    for flag in ["-v", "--version"] {
+        rezup()
+            .arg(flag)
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("rezup 0.1.0"))
+            .stderr(predicate::str::is_empty());
+    }
 }
 
 #[test]
