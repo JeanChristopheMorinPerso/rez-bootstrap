@@ -30,7 +30,7 @@ fn top_level_help_and_version_succeed() {
 }
 
 #[test]
-fn install_parses_selectors_and_returns_stub_error() {
+fn install_rejects_selectors_that_are_not_implemented_yet() {
     rezup()
         .args([
             "install",
@@ -51,7 +51,18 @@ fn install_parses_selectors_and_returns_stub_error() {
         ])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("rezup install is not implemented"));
+        .stderr(predicate::str::contains(
+            "custom Python platform, architecture, microarchitecture, and libc selectors are not implemented yet",
+        ))
+        .stderr(predicate::str::contains("rezup install is not implemented").not());
+
+    rezup()
+        .args(["install", "--python-platform", "linux", "/opt/rez"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "custom Python platform, architecture, microarchitecture, and libc selectors are not implemented yet",
+        ));
 }
 
 #[test]
@@ -113,7 +124,7 @@ fn nested_help_succeeds_without_stub_error() {
 #[test]
 fn missing_and_invalid_arguments_are_rejected() {
     rezup()
-        .args(["install", "3.2.1"])
+        .arg("install")
         .assert()
         .failure()
         .stderr(predicate::str::contains("<PATH>"))

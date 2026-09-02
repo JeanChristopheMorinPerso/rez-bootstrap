@@ -2,6 +2,7 @@
 name = "rezup"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.96"
 license = "Apache-2.0"
 description = "Bootstrap and manage Rez installations"
 
@@ -10,10 +11,19 @@ name = "rezup"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.104"
 clap = { version = "4.6.6", features = ["derive"] }
+flate2 = "1.1.10"
 reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "json", "query", "rustls"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+tar = "0.4.46"
+tempfile = "3.27.0"
+tokio = { version = "1.53.1", features = ["fs", "rt-multi-thread"] }
+uv-cache = "=0.0.76"
+uv-client = "=0.0.76"
+uv-preview = "=0.0.76"
+uv-python = "=0.0.76"
 
 [dev-dependencies]
 assert_cmd = "2.0"

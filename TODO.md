@@ -10,6 +10,7 @@
 - [x] Support paginated, human-readable, and JSON version listings.
 - [x] Add a shared HTTP client with a `rezup/<version>` user agent and request timeout.
 - [x] Add focused CLI, pagination, draft-filtering, and output-format tests.
+- [x] Implement initial `rezup install` support for latest or selected Rez and managed Python on the current host.
 
 ## HTTP reliability
 
@@ -28,7 +29,7 @@
 - [ ] Add suitable short aliases for long options, starting with `-j`/`--json`.
 - [ ] Add pager output similar to `less` for long human-readable output from list commands, while keeping JSON and redirected output unpaged.
 - [ ] Implement `rezup bootstrap`.
-- [ ] Implement `rezup install [Python selectors] <version> <path>`.
+- [ ] Implement the remaining `rezup install` Python platform, architecture, microarchitecture, libc, and debug-build selectors.
 - [ ] Implement `rezup update`.
 - [ ] Implement `rezup package [--rez <path>] install arch [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] install os [version] [--release]`.

@@ -4,6 +4,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 mod http;
+mod install;
 mod list;
 
 #[derive(Debug, Parser)]
@@ -33,6 +34,7 @@ enum Command {
 }
 
 #[derive(Debug, Args)]
+#[command(allow_missing_positional = true)]
 struct InstallArgs {
     /// Python version selector.
     #[arg(long)]
@@ -52,7 +54,8 @@ struct InstallArgs {
     /// Python C library selector.
     #[arg(long)]
     python_libc: Option<String>,
-    /// Rez version to install.
+    /// Rez version to install (defaults to latest).
+    #[arg(default_value = "latest")]
     version: String,
     /// Installation prefix.
     path: PathBuf,
@@ -192,6 +195,9 @@ impl Command {
 impl Cli {
     fn run(self) -> Result<(), String> {
         match self.command {
+            Command::Install(args) => {
+                install::run(args).map_err(|error| format!("rezup install failed: {error:#}"))
+            }
             Command::List(args) => {
                 list::run(args.json).map_err(|error| format!("rezup list failed: {error}"))
             }
