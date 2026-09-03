@@ -66,7 +66,7 @@ fn install_rejects_selectors_that_are_not_implemented_yet() {
 }
 
 #[test]
-fn nested_package_commands_parse_and_name_the_leaf_action() {
+fn python_package_install_rejects_unsupported_selectors_before_downloading() {
     rezup()
         .args([
             "package",
@@ -90,9 +90,36 @@ fn nested_package_commands_parse_and_name_the_leaf_action() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "rezup package install python is not implemented",
+            "custom Python platform, architecture, microarchitecture, and libc selectors are not implemented yet",
+        ))
+        .stderr(predicate::str::contains("is not implemented").not());
+
+    rezup()
+        .args(["package", "install", "python", "--mode", "debug"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "debug managed Python builds are not implemented yet",
         ));
 
+    rezup()
+        .args([
+            "package",
+            "--rez",
+            "/does/not/exist/rez",
+            "install",
+            "python",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "failed to run Rez executable `/does/not/exist/rez`",
+        ))
+        .stderr(predicate::str::contains("Installing managed Python").not());
+}
+
+#[test]
+fn remaining_nested_package_commands_name_the_leaf_action() {
     rezup()
         .args(["package", "install", "arch", "x86_64", "--release"])
         .assert()

@@ -11,6 +11,7 @@
 - [x] Add a shared HTTP client with a `rezup/<version>` user agent and request timeout.
 - [x] Add focused CLI, pagination, draft-filtering, and output-format tests.
 - [x] Implement initial `rezup install` support for latest or selected Rez and managed Python on the current host.
+- [x] Install latest or selected host-compatible Python Build Standalone runtimes as Rez packages.
 
 ## HTTP reliability
 
@@ -34,7 +35,7 @@
 - [ ] Implement `rezup package [--rez <path>] install arch [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] install os [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] install platform [version] [--release]`.
-- [ ] Implement `rezup package [--rez <path>] install python [version]` and its selectors.
+- [ ] Implement the remaining `rezup package install python` cross-target and debug-build selectors.
 - [ ] Implement `rezup package [--rez <path>] list [python|os|arch|platform]`.
 - [ ] Implement `rezup self update`.
 

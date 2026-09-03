@@ -6,6 +6,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 mod http;
 mod install;
 mod list;
+mod package;
 
 #[derive(Debug, Parser)]
 #[command(name = "rezup", version, about, disable_version_flag = true)]
@@ -201,6 +202,14 @@ impl Cli {
             Command::List(args) => {
                 list::run(args.json).map_err(|error| format!("rezup list failed: {error}"))
             }
+            Command::Package(PackageArgs {
+                rez,
+                command:
+                    PackageCommand::Install(PackageInstallArgs {
+                        command: PackageInstallCommand::Python(args),
+                    }),
+            }) => package::install_python(rez, args)
+                .map_err(|error| format!("rezup package install python failed: {error:#}")),
             command => Err(format!("{} is not implemented", command.action())),
         }
     }

@@ -16,6 +16,11 @@ use uv_python::managed::ManagedPythonInstallation;
 
 use crate::{BuildMode, InstallArgs};
 
+pub(crate) struct ManagedPython {
+    pub executable: PathBuf,
+    pub version: String,
+}
+
 #[derive(Deserialize)]
 struct GitHubRelease {
     tag_name: String,
@@ -23,9 +28,7 @@ struct GitHubRelease {
 
 pub fn run(args: InstallArgs) -> Result<()> {
     validate_selectors(&args)?;
-    uv_preview::set(uv_preview::Preview::default())
-        .context("failed to initialize uv preview configuration")?;
-    uv_preview::finalize().context("failed to finalize uv preview configuration")?;
+    initialize_uv()?;
 
     let destination = std::path::absolute(&args.path)
         .with_context(|| format!("failed to resolve `{}`", args.path.display()))?;
@@ -47,7 +50,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
 
         let rez_version = resolve_rez_version(&args.version)?;
         eprintln!("Installing Rez {rez_version}...");
-        install_rez(&rez_version, &python, &destination, parent)?;
+        install_rez(&rez_version, &python.executable, &destination, parent)?;
         Ok(rez_version)
     })();
     let rez_version = match result {
@@ -66,6 +69,13 @@ pub fn run(args: InstallArgs) -> Result<()> {
     };
 
     eprintln!("Installed Rez {rez_version} into {}", destination.display());
+    Ok(())
+}
+
+pub(crate) fn initialize_uv() -> Result<()> {
+    uv_preview::set(uv_preview::Preview::default())
+        .context("failed to initialize uv preview configuration")?;
+    uv_preview::finalize().context("failed to finalize uv preview configuration")?;
     Ok(())
 }
 
@@ -98,11 +108,11 @@ fn ensure_destination_available(destination: &Path) -> Result<()> {
     }
 }
 
-async fn install_python(
+pub(crate) async fn install_python(
     version: Option<&str>,
     destination: &Path,
     parent: &Path,
-) -> Result<PathBuf> {
+) -> Result<ManagedPython> {
     let cache = Cache::temp().context("failed to create uv metadata cache")?;
     let client_builder = BaseClientBuilder::default()
         .custom_client(crate::http::async_client().context("failed to create HTTP client")?);
@@ -129,6 +139,7 @@ async fn install_python(
         .iter_matching(&request)
         .next()
         .context("no matching stable managed Python build is available")?;
+    let version = download.key().version().to_string();
 
     eprintln!("Selected Python {}", download.key());
     let staging = TempDirBuilder::new()
@@ -176,7 +187,10 @@ async fn install_python(
     installation.ensure_canonical_executables()?;
     installation.ensure_build_file()?;
 
-    Ok(installation.executable(false))
+    Ok(ManagedPython {
+        executable: installation.executable(false),
+        version,
+    })
 }
 
 fn resolve_rez_version(version: &str) -> Result<String> {
