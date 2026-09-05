@@ -18,6 +18,9 @@ use uv_python::managed::ManagedPythonInstallation;
 
 use crate::{BuildMode, InstallArgs};
 
+const EXTERNALLY_MANAGED: &str = "[externally-managed]\n\
+Error=This Python installation is managed by rezup and must not be modified directly. Create a virtual environment to install additional packages.\n";
+
 pub(crate) struct ManagedPython {
     pub executable: PathBuf,
     pub selection: SelectedPython,
@@ -234,10 +237,10 @@ pub(crate) async fn install_selected_python(
 
     let installation =
         ManagedPythonInstallation::new(destination.to_path_buf(), &selected.download);
-    installation.ensure_externally_managed()?;
     installation.ensure_sysconfig_patched()?;
     installation.ensure_build_file()?;
     let key = installation.key();
+    write_externally_managed(destination, key.os().is_windows(), key.major(), key.minor())?;
     let executable = ensure_canonical_executable(
         destination,
         key.os().is_windows(),
@@ -250,6 +253,24 @@ pub(crate) async fn install_selected_python(
         executable,
         selection: selected,
     })
+}
+
+fn externally_managed_path(destination: &Path, windows: bool, major: u8, minor: u8) -> PathBuf {
+    if windows {
+        destination.join("Lib").join("EXTERNALLY-MANAGED")
+    } else {
+        destination
+            .join("lib")
+            .join(format!("python{major}.{minor}"))
+            .join("EXTERNALLY-MANAGED")
+    }
+}
+
+fn write_externally_managed(destination: &Path, windows: bool, major: u8, minor: u8) -> Result<()> {
+    let path = externally_managed_path(destination, windows, major, minor);
+    fs::write(&path, EXTERNALLY_MANAGED)
+        .with_context(|| format!("failed to write PEP 668 marker `{}`", path.display()))?;
+    Ok(())
 }
 
 fn ensure_canonical_executable(
@@ -500,5 +521,32 @@ mod tests {
             fs::read_to_string(destination.path().join("existing")).unwrap(),
             "destination"
         );
+    }
+
+    #[test]
+    fn locates_pep_668_markers_for_unix_and_windows_layouts() {
+        let root = Path::new("python");
+        assert_eq!(
+            externally_managed_path(root, false, 3, 13),
+            root.join("lib/python3.13/EXTERNALLY-MANAGED")
+        );
+        assert_eq!(
+            externally_managed_path(root, true, 3, 13),
+            root.join("Lib/EXTERNALLY-MANAGED")
+        );
+    }
+
+    #[test]
+    fn writes_rezup_pep_668_message() {
+        let root = tempfile::tempdir().unwrap();
+        fs::create_dir_all(root.path().join("lib/python3.13")).unwrap();
+
+        write_externally_managed(root.path(), false, 3, 13).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(root.path().join("lib/python3.13/EXTERNALLY-MANAGED")).unwrap(),
+            EXTERNALLY_MANAGED
+        );
+        assert!(EXTERNALLY_MANAGED.contains("managed by rezup"));
     }
 }

@@ -15,6 +15,7 @@
 - [x] Support version, mode, architecture, microarchitecture, platform, libc, and repository selectors for Python Rez packages.
 - [x] Give Python mode, libc implementation, and x86-64 microarchitecture solver-visible identities using Rez ephemerals.
 - [x] Store Python Build Standalone selection metadata in each Rez variant payload.
+- [x] Mark managed Python installations and package payloads as externally managed according to PEP 668.
 
 ## HTTP reliability
 
