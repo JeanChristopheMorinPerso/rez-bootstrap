@@ -11,13 +11,20 @@ use tempfile::{Builder as TempDirBuilder, NamedTempFile};
 use uv_cache::Cache;
 use uv_client::BaseClientBuilder;
 use uv_python::PythonRequest;
-use uv_python::downloads::{DownloadResult, ManagedPythonDownloadList, PythonDownloadRequest};
+use uv_python::downloads::{
+    DownloadResult, ManagedPythonDownload, ManagedPythonDownloadList, PythonDownloadRequest,
+};
 use uv_python::managed::ManagedPythonInstallation;
 
 use crate::{BuildMode, InstallArgs};
 
 pub(crate) struct ManagedPython {
     pub executable: PathBuf,
+    pub selection: SelectedPython,
+}
+
+pub(crate) struct SelectedPython {
+    download: ManagedPythonDownload,
     pub version: String,
 }
 
@@ -130,7 +137,34 @@ pub(crate) async fn install_python_request(
     destination: &Path,
     parent: &Path,
 ) -> Result<ManagedPython> {
+    let selected = select_python(request).await?;
+    install_selected_python(selected, destination, parent).await
+}
+
+pub(crate) async fn select_python(request: &PythonDownloadRequest) -> Result<SelectedPython> {
     let cache = Cache::temp().context("failed to create uv metadata cache")?;
+    let client_builder = BaseClientBuilder::default()
+        .custom_client(crate::http::async_client().context("failed to create HTTP client")?);
+    let downloads = ManagedPythonDownloadList::new(&client_builder, &cache, None)
+        .await
+        .context("failed to load managed Python catalogue")?;
+    let download = downloads
+        .iter_matching(request)
+        .next()
+        .context("no matching stable managed Python build is available")?
+        .clone();
+
+    Ok(SelectedPython {
+        version: download.key().version().to_string(),
+        download,
+    })
+}
+
+pub(crate) async fn install_selected_python(
+    selected: SelectedPython,
+    destination: &Path,
+    parent: &Path,
+) -> Result<ManagedPython> {
     let client_builder = BaseClientBuilder::default()
         .custom_client(crate::http::async_client().context("failed to create HTTP client")?);
     let retry_policy = client_builder.retry_policy();
@@ -139,16 +173,8 @@ pub(crate) async fn install_python_request(
         .retries(0)
         .build()
         .context("failed to create uv client")?;
-    let downloads = ManagedPythonDownloadList::new(&client_builder, &cache, None)
-        .await
-        .context("failed to load managed Python catalogue")?;
-    let download = downloads
-        .iter_matching(request)
-        .next()
-        .context("no matching stable managed Python build is available")?;
-    let version = download.key().version().to_string();
 
-    eprintln!("Selected Python {}", download.key());
+    eprintln!("Selected Python {}", selected.download.key());
     let staging = TempDirBuilder::new()
         .prefix(".rezup-python-")
         .tempdir_in(parent)
@@ -163,7 +189,8 @@ pub(crate) async fn install_python_request(
     tokio::fs::create_dir_all(&downloads_dir).await?;
     tokio::fs::create_dir_all(&scratch_dir).await?;
 
-    let extracted = match download
+    let extracted = match selected
+        .download
         .fetch_with_retry(
             &client,
             &retry_policy,
@@ -188,7 +215,8 @@ pub(crate) async fn install_python_request(
         )
     })?;
 
-    let installation = ManagedPythonInstallation::new(destination.to_path_buf(), download);
+    let installation =
+        ManagedPythonInstallation::new(destination.to_path_buf(), &selected.download);
     installation.ensure_externally_managed()?;
     installation.ensure_sysconfig_patched()?;
     installation.ensure_canonical_executables()?;
@@ -196,7 +224,7 @@ pub(crate) async fn install_python_request(
 
     Ok(ManagedPython {
         executable: installation.executable(false),
-        version,
+        selection: selected,
     })
 }
 

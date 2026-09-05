@@ -1,12 +1,13 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, Output, Stdio};
 use std::str::FromStr;
 
 use anyhow::{Context, Result, bail};
 use tempfile::Builder as TempDirBuilder;
 use uv_python::downloads::PythonDownloadRequest;
 
+use crate::install::SelectedPython;
 use crate::{BuildMode, PythonPackageArgs};
 
 const MAKE_PYTHON_PACKAGE: &[u8] = include_bytes!("../scripts/install_python_package.py");
@@ -24,15 +25,24 @@ pub fn install_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<(
     let payload = staging.path().join("payload");
     let runtime = tokio::runtime::Runtime::new().context("failed to start async runtime")?;
 
+    let selected = runtime.block_on(crate::install::select_python(&request))?;
+    if variant_exists(&rez, &selected, args.release)? {
+        eprintln!("Python {} variant is already installed", selected.version);
+        return Ok(());
+    }
+
     eprintln!("Installing managed Python package payload...");
-    let python = runtime.block_on(crate::install::install_python_request(
-        &request,
+    let python = runtime.block_on(crate::install::install_selected_python(
+        selected,
         &payload,
         staging.path(),
     ))?;
 
-    install_rez_package(&rez, &payload, &python.version, args.release)?;
-    eprintln!("Installed Python {} as a Rez package", python.version);
+    install_rez_package(&rez, &payload, &python.selection, args.release)?;
+    eprintln!(
+        "Installed Python {} as a Rez package",
+        python.selection.version
+    );
     Ok(())
 }
 
@@ -102,12 +112,51 @@ fn validate_rez(rez: &Path) -> Result<()> {
     Ok(())
 }
 
-fn install_rez_package(rez: &Path, payload: &Path, version: &str, release: bool) -> Result<()> {
+fn install_rez_package(
+    rez: &Path,
+    payload: &Path,
+    python: &SelectedPython,
+    release: bool,
+) -> Result<()> {
+    let output = run_package_script(rez, "install", payload, python, release)?;
+    if !output.status.success() {
+        bail!(
+            "Rez package installation exited with {}\n{}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(())
+}
+
+fn variant_exists(rez: &Path, python: &SelectedPython, release: bool) -> Result<bool> {
+    let output = run_package_script(rez, "check", Path::new(""), python, release)?;
+    match output.status.code() {
+        Some(0) => Ok(true),
+        Some(3) => Ok(false),
+        _ => bail!(
+            "Rez package preflight exited with {}\n{}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    }
+}
+
+fn run_package_script(
+    rez: &Path,
+    action: &str,
+    payload: &Path,
+    python: &SelectedPython,
+    release: bool,
+) -> Result<Output> {
     let mut child = Command::new(rez)
         .arg("python")
         .arg("-")
+        .arg(action)
         .arg(payload)
-        .arg(version)
+        .arg(&python.version)
         .arg(if release { "true" } else { "false" })
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -122,16 +171,8 @@ fn install_rez_package(rez: &Path, payload: &Path, version: &str, release: bool)
         .context("failed to send embedded package installer to Rez Python")?;
     let output = child
         .wait_with_output()
-        .context("failed to wait for Rez package installation")?;
-    if !output.status.success() {
-        bail!(
-            "Rez package installation exited with {}\n{}{}",
-            output.status,
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-    Ok(())
+        .with_context(|| format!("failed to wait for Rez package {action}"))?;
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -143,7 +184,8 @@ mod tests {
         let script = str::from_utf8(MAKE_PYTHON_PACKAGE).unwrap();
         assert!(script.contains("config.local_packages_path"));
         assert!(script.contains("config.release_packages_path"));
-        assert!(script.contains("package.variants = [system.variant]"));
+        assert!(script.contains("package.variants = [variant]"));
+        assert!(script.contains("variant_exists()"));
         assert!(!script.contains("def commands"));
     }
 

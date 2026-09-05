@@ -28,7 +28,8 @@ as a host-specific Rez package. Its version, debug/release mode, architecture, a
 x86-64 microarchitecture selectors are matched against uv's Python Build Standalone
 catalogue; custom platform and libc selectors remain unimplemented. It uses the supplied `--rez` executable, or `rez`
 from `PATH`, and installs into Rez's configured local package repository by default;
-`--release` selects the configured release repository. The embedded package-maker
+`--release` selects the configured release repository. Existing matching variants are
+detected from catalogue metadata and skipped before downloading. The embedded package-maker
 is also available at `scripts/install_python_package.py` for standalone compatibility
 testing with Rez's Python.
 
