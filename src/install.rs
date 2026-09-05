@@ -26,6 +26,11 @@ pub(crate) struct ManagedPython {
 pub(crate) struct SelectedPython {
     download: ManagedPythonDownload,
     pub version: String,
+    pub download_key: String,
+    pub platform: String,
+    pub architecture: String,
+    pub libc: String,
+    pub mode: String,
 }
 
 #[derive(Deserialize)]
@@ -153,9 +158,21 @@ pub(crate) async fn select_python(request: &PythonDownloadRequest) -> Result<Sel
         .next()
         .context("no matching stable managed Python build is available")?
         .clone();
+    let key = download.key();
+    let mode = if key.variant().is_debug() {
+        "debug"
+    } else {
+        "release"
+    }
+    .to_owned();
 
     Ok(SelectedPython {
-        version: download.key().version().to_string(),
+        version: key.version().to_string(),
+        download_key: key.to_string(),
+        platform: key.os().to_string(),
+        architecture: key.arch().to_string(),
+        libc: key.libc().to_string(),
+        mode,
         download,
     })
 }
@@ -219,13 +236,81 @@ pub(crate) async fn install_selected_python(
         ManagedPythonInstallation::new(destination.to_path_buf(), &selected.download);
     installation.ensure_externally_managed()?;
     installation.ensure_sysconfig_patched()?;
-    installation.ensure_canonical_executables()?;
     installation.ensure_build_file()?;
+    let key = installation.key();
+    let executable = ensure_canonical_executable(
+        destination,
+        key.os().is_windows(),
+        key.major(),
+        key.minor(),
+        key.variant().executable_suffix(),
+    )?;
 
     Ok(ManagedPython {
-        executable: installation.executable(false),
+        executable,
         selection: selected,
     })
+}
+
+fn ensure_canonical_executable(
+    destination: &Path,
+    windows: bool,
+    major: u8,
+    minor: u8,
+    executable_suffix: &str,
+) -> Result<PathBuf> {
+    if windows {
+        let executable = destination.join("python.exe");
+        if !executable.is_file() {
+            bail!(
+                "managed Python archive does not contain `{}`",
+                executable.display()
+            );
+        }
+        return Ok(executable);
+    }
+
+    let executable = destination
+        .join("bin")
+        .join(format!("python{major}.{minor}{executable_suffix}"));
+    if !executable.is_file() {
+        bail!(
+            "managed Python archive does not contain `{}`",
+            executable.display()
+        );
+    }
+    let canonical = executable.with_file_name("python");
+    if !canonical.exists() {
+        create_python_link(&executable, &canonical)?;
+    }
+    Ok(executable)
+}
+
+#[cfg(unix)]
+fn create_python_link(executable: &Path, canonical: &Path) -> Result<()> {
+    let target = executable
+        .file_name()
+        .context("managed Python executable has no file name")?;
+    std::os::unix::fs::symlink(target, canonical).with_context(|| {
+        format!(
+            "failed to link `{}` to `{}`",
+            canonical.display(),
+            executable.display()
+        )
+    })?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn create_python_link(executable: &Path, canonical: &Path) -> Result<()> {
+    fs::copy(executable, canonical).with_context(|| {
+        format!(
+            "failed to copy `{}` to `{}`",
+            executable.display(),
+            canonical.display()
+        )
+    })?;
+    Ok(())
 }
 
 fn resolve_rez_version(version: &str) -> Result<String> {

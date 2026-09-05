@@ -1,4 +1,4 @@
-"""Install a prepared Python runtime as a host-specific Rez package."""
+"""Install a prepared Python runtime as a Rez package variant."""
 
 import shutil
 import sys
@@ -10,7 +10,7 @@ from rez.system import system
 from rez.version import Requirement
 
 
-action, source, version, release = sys.argv[1:]
+action, source, version, release, _download_key, pbs_platform, pbs_arch, pbs_libc, mode = sys.argv[1:]
 repository = config.release_packages_path if release == "true" else config.local_packages_path
 
 
@@ -18,16 +18,43 @@ def make_root(_variant, root):
     shutil.copytree(source, root, dirs_exist_ok=True)
 
 
-if system.platform == "windows":
-    commands = """\
-env.PATH.prepend("{this.root}/Scripts")
+commands = """\
 env.PATH.prepend("{this.root}")
+env.PATH.prepend("{this.root}/Scripts")
+env.PATH.prepend("{this.root}/bin")
 """
+
+
+arch_parts = pbs_arch.rsplit("_", 1)
+if len(arch_parts) == 2 and arch_parts[1] in ("v2", "v3", "v4"):
+    base_arch, microarchitecture = arch_parts
 else:
-    commands = 'env.PATH.prepend("{this.root}/bin")'
+    base_arch = pbs_arch
+    microarchitecture = None
+
+rez_platform = {"macos": "osx"}.get(pbs_platform, pbs_platform)
+if rez_platform == "windows":
+    rez_arch = {"x86_64": "AMD64", "aarch64": "ARM64"}.get(base_arch, base_arch)
+elif rez_platform == "osx" and base_arch == "aarch64":
+    rez_arch = "arm64"
+else:
+    rez_arch = base_arch
 
 
-variant = system.variant
+def comparable_arch(arch):
+    return {"amd64": "x86_64", "arm64": "aarch64"}.get(arch.lower(), arch.lower())
+
+
+if rez_platform == system.platform and comparable_arch(rez_arch) == comparable_arch(system.arch):
+    variant = list(system.variant)
+else:
+    variant = [f"platform-{rez_platform}", f"arch-{rez_arch}"]
+
+ephemerals = [f".python.libc=={pbs_libc}", f".python.mode=={mode}"]
+if base_arch == "x86_64":
+    microarchitecture_level = {None: 1, "v2": 2, "v3": 3, "v4": 4}[microarchitecture]
+    ephemerals.append(f".python.x86_64_level-{microarchitecture_level}+")
+variant.extend(ephemerals)
 
 
 def variant_exists():

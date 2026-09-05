@@ -66,7 +66,7 @@ fn install_rejects_selectors_that_are_not_implemented_yet() {
 }
 
 #[test]
-fn python_package_install_parses_build_selectors_before_downloading() {
+fn python_package_install_parses_selectors_and_validates_before_downloading() {
     rezup()
         .args([
             "package",
@@ -81,6 +81,10 @@ fn python_package_install_parses_build_selectors_before_downloading() {
             "x86_64",
             "--microarch",
             "v2",
+            "--platform",
+            "linux",
+            "--libc",
+            "glibc",
             "--release",
         ])
         .assert()
@@ -112,16 +116,15 @@ fn python_package_install_parses_build_selectors_before_downloading() {
             "install",
             "python",
             "--platform",
-            "linux",
+            "windows",
             "--libc",
-            "glibc",
+            "musl",
         ])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "custom Python platform and libc selectors are not implemented yet",
-        ))
-        .stderr(predicate::str::contains("Installing managed Python").not());
+            "--libc can only select `none` when --platform is not `linux`",
+        ));
 }
 
 #[test]

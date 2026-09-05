@@ -47,9 +47,6 @@ pub fn install_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<(
 }
 
 fn download_request(args: &PythonPackageArgs) -> Result<PythonDownloadRequest> {
-    if args.platform.is_some() || args.libc.is_some() {
-        bail!("custom Python platform and libc selectors are not implemented yet");
-    }
     let debug = matches!(args.mode, Some(BuildMode::Debug));
     let version = args
         .version
@@ -63,9 +60,20 @@ fn download_request(args: &PythonPackageArgs) -> Result<PythonDownloadRequest> {
     } else {
         version.to_owned()
     };
+    let platform = args.platform.as_deref().map(normalize_platform);
     let architecture = normalize_architecture(args.arch.as_deref(), args.microarch.as_deref())?;
+    let libc = match (args.libc.as_deref(), platform.as_deref()) {
+        (Some(libc), _) => normalize_libc(libc),
+        (None, Some("linux")) => "gnu".to_owned(),
+        (None, Some(_)) => "none".to_owned(),
+        (None, None) => "any".to_owned(),
+    };
+    if platform.as_deref().is_some_and(|value| value != "linux") && libc != "none" {
+        bail!("--libc can only select `none` when --platform is not `linux`");
+    }
     let selector = format!(
-        "cpython-{version}-any-{}-any",
+        "cpython-{version}-{}-{}-{libc}",
+        platform.as_deref().unwrap_or("any"),
         architecture.as_deref().unwrap_or("any")
     );
     PythonDownloadRequest::from_str(&selector)
@@ -73,6 +81,13 @@ fn download_request(args: &PythonPackageArgs) -> Result<PythonDownloadRequest> {
         .fill()
         .context("failed to resolve managed Python selector defaults")
         .map(|request| request.with_prereleases(false))
+}
+
+fn normalize_platform(platform: &str) -> String {
+    match platform.to_ascii_lowercase().as_str() {
+        "darwin" | "osx" => "macos".to_owned(),
+        platform => platform.to_owned(),
+    }
 }
 
 fn normalize_architecture(arch: Option<&str>, microarch: Option<&str>) -> Result<Option<String>> {
@@ -93,6 +108,13 @@ fn normalize_architecture(arch: Option<&str>, microarch: Option<&str>) -> Result
         bail!("Python microarchitecture `{microarch}` is only supported with x86_64");
     }
     Ok(Some(format!("{arch}_{microarch}")))
+}
+
+fn normalize_libc(libc: &str) -> String {
+    match libc.to_ascii_lowercase().as_str() {
+        "glibc" => "gnu".to_owned(),
+        libc => libc.to_owned(),
+    }
 }
 
 fn validate_rez(rez: &Path) -> Result<()> {
@@ -158,6 +180,11 @@ fn run_package_script(
         .arg(payload)
         .arg(&python.version)
         .arg(if release { "true" } else { "false" })
+        .arg(&python.download_key)
+        .arg(&python.platform)
+        .arg(&python.architecture)
+        .arg(&python.libc)
+        .arg(&python.mode)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -185,6 +212,9 @@ mod tests {
         assert!(script.contains("config.local_packages_path"));
         assert!(script.contains("config.release_packages_path"));
         assert!(script.contains("package.variants = [variant]"));
+        assert!(script.contains(".python.libc=="));
+        assert!(script.contains(".python.x86_64_level-"));
+        assert!(script.contains(".python.mode=="));
         assert!(script.contains("variant_exists()"));
         assert!(!script.contains("def commands"));
     }
@@ -196,14 +226,15 @@ mod tests {
             mode: Some(BuildMode::Debug),
             arch: Some("amd64".to_owned()),
             microarch: Some("v3".to_owned()),
-            platform: None,
-            libc: None,
+            platform: Some("linux".to_owned()),
+            libc: Some("glibc".to_owned()),
             release: false,
         };
 
-        let request = download_request(&args).unwrap().to_string();
-        assert!(request.contains("3.13+debug"));
-        assert!(request.contains("x86_64_v3"));
+        assert_eq!(
+            download_request(&args).unwrap().to_string(),
+            "cpython-3.13+debug-linux-x86_64_v3-gnu"
+        );
     }
 
     #[test]
@@ -219,5 +250,23 @@ mod tests {
         };
 
         assert!(download_request(&args).is_err());
+    }
+
+    #[test]
+    fn normalizes_macos_arm_and_non_linux_libc() {
+        let args = PythonPackageArgs {
+            version: Some("3.12.4".to_owned()),
+            mode: Some(BuildMode::Release),
+            arch: Some("arm64".to_owned()),
+            microarch: None,
+            platform: Some("osx".to_owned()),
+            libc: None,
+            release: true,
+        };
+
+        assert_eq!(
+            download_request(&args).unwrap().to_string(),
+            "cpython-3.12.4-macos-aarch64-none"
+        );
     }
 }

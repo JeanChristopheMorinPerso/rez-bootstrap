@@ -24,9 +24,12 @@ Custom Python platform, architecture, microarchitecture, libc, and debug-build
 selectors are not implemented yet.
 
 `package install python` downloads a complete managed Python runtime and installs it
-as a host-specific Rez package. Its version, debug/release mode, architecture, and
-x86-64 microarchitecture selectors are matched against uv's Python Build Standalone
-catalogue; custom platform and libc selectors remain unimplemented. It uses the supplied `--rez` executable, or `rez`
+as a Rez package. Its version, debug/release mode, architecture, x86-64
+microarchitecture, platform, and libc selectors are matched against uv's Python Build
+Standalone catalogue. Platform and base architecture are stored as Rez variant
+requirements. Mode and libc implementation use exact ephemeral requirements, while
+x86-64 microarchitecture uses a minimum-level ephemeral requirement. Sites must provide
+matching exact host capabilities when resolving these variants. It uses the supplied `--rez` executable, or `rez`
 from `PATH`, and installs into Rez's configured local package repository by default;
 `--release` selects the configured release repository. Existing matching variants are
 detected from catalogue metadata and skipped before downloading. The embedded package-maker

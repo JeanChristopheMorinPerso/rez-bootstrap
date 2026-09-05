@@ -12,7 +12,8 @@
 - [x] Add focused CLI, pagination, draft-filtering, and output-format tests.
 - [x] Implement initial `rezup install` support for latest or selected Rez and managed Python on the current host.
 - [x] Install latest or selected host-compatible Python Build Standalone runtimes as Rez packages.
-- [x] Support version, mode, architecture, and microarchitecture selectors for Python Rez packages.
+- [x] Support version, mode, architecture, microarchitecture, platform, libc, and repository selectors for Python Rez packages.
+- [x] Give Python mode, libc implementation, and x86-64 microarchitecture solver-visible identities using Rez ephemerals.
 
 ## HTTP reliability
 
@@ -36,7 +37,6 @@
 - [ ] Implement `rezup package [--rez <path>] install arch [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] install os [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] install platform [version] [--release]`.
-- [ ] Implement the remaining `rezup package install python` platform and libc selectors.
 - [ ] Implement `rezup package [--rez <path>] list [python|os|arch|platform]`.
 - [ ] Implement `rezup self update`.
 
@@ -49,6 +49,8 @@
 - [ ] Define overwrite, upgrade, downgrade, and already-installed behavior.
 - [ ] Implement Rez executable discovery from `--rez` or `PATH`.
 - [ ] Define package version resolution and debug/release selection behavior.
+- [ ] Read the minimum glibc symbol version from Python Build Standalone's `PYTHON.json` and represent it as a solver-visible minimum requirement.
+- [ ] Define how Rez sites inject exact host mode, libc, and x86-64 microarchitecture capabilities so unconstrained resolves cannot select incompatible variants.
 
 ## Quality and delivery
 
