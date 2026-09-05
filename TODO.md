@@ -52,6 +52,8 @@
 - [ ] Define package version resolution and debug/release selection behavior.
 - [ ] Read the minimum glibc symbol version from Python Build Standalone's `PYTHON.json` and represent it as a solver-visible minimum requirement.
 - [ ] Define how Rez sites inject exact host mode, libc, and x86-64 microarchitecture capabilities so unconstrained resolves cannot select incompatible variants.
+- [ ] Lock each Rez package version around the final collision check and package publication to prevent concurrent writers from targeting the same variant root.
+- [ ] Decide how a newer Python Build Standalone build of an existing Python variant should be represented and upgraded without overwriting an immutable Rez package version.
 
 ## Quality and delivery
 

@@ -34,7 +34,8 @@ details are stored in `.rezup/python-build-standalone.json` inside each variant 
 It uses the supplied `--rez` executable, or `rez`
 from `PATH`, and installs into Rez's configured local package repository by default;
 `--release` selects the configured release repository. Existing matching variants are
-detected from catalogue metadata and skipped before downloading. The embedded package-maker
+detected from catalogue metadata and skipped before downloading, then checked again before
+the package payload is copied. The embedded package-maker
 is also available at `scripts/install_python_package.py` for standalone compatibility
 testing with Rez's Python.
 

@@ -90,13 +90,16 @@ def variant_exists():
     )
 
 
+exists = variant_exists()
 if action == "check":
-    sys.exit(0 if variant_exists() else 3)
+    sys.exit(0 if exists else 3)
 if action != "install":
     raise RuntimeError(f"Unknown action: {action}")
+if exists:
+    raise RuntimeError(f"Python {version} variant already exists: {', '.join(variant)}")
 
 
-with make_package("python", repository, make_root=make_root) as package:
+with make_package("python", repository, make_root=make_root, skip_existing=False) as package:
     package.version = version
     package.tools = ["python"]
     package.commands = commands

@@ -217,6 +217,8 @@ mod tests {
         assert!(script.contains(".python.mode=="));
         assert!(script.contains("python-build-standalone.json"));
         assert!(script.contains("variant_exists()"));
+        assert!(script.contains("if exists:"));
+        assert!(script.contains("skip_existing=False"));
         assert!(!script.contains("def commands"));
     }
 
