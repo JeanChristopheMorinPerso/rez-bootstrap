@@ -446,13 +446,33 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
         );
     }
 
-    let rez_bin = if cfg!(windows) {
+    let rez_commands = if cfg!(windows) {
         destination.join("Scripts").join("rez")
     } else {
         destination.join("bin").join("rez")
     };
-    fs::write(rez_bin.join(".rez_production_install"), version)
+    let rez_executable = rez_commands.join(if cfg!(windows) { "rez.exe" } else { "rez" });
+    eprintln!("Verifying rez installation...");
+    smoke_test_rez(&rez_executable)?;
+    fs::write(rez_commands.join(".rez_production_install"), version)
         .context("failed to mark the Rez production installation")?;
+    Ok(())
+}
+
+fn smoke_test_rez(rez: &Path) -> Result<()> {
+    let output = Command::new(rez)
+        .arg("--version")
+        .output()
+        .with_context(|| format!("failed to run Rez smoke test `{}`", rez.display()))?;
+    if !output.status.success() {
+        bail!(
+            "Rez smoke test `{}` exited with {}\n{}{}",
+            rez.display(),
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
     Ok(())
 }
 
@@ -570,6 +590,23 @@ mod tests {
         assert!(validate_install_path("lib/python3.14/site-packages", prefix.path()).is_err());
         let outside = prefix.path().with_extension("outside");
         assert!(validate_install_path(outside.to_str().unwrap(), prefix.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rez_smoke_test_requires_a_successful_command() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = tempfile::tempdir().unwrap();
+        let rez = root.path().join("rez");
+        fs::write(&rez, "#!/bin/sh\nexit 0\n").unwrap();
+        fs::set_permissions(&rez, fs::Permissions::from_mode(0o755)).unwrap();
+        smoke_test_rez(&rez).unwrap();
+
+        fs::write(&rez, "#!/bin/sh\necho broken >&2\nexit 9\n").unwrap();
+        let error = smoke_test_rez(&rez).unwrap_err().to_string();
+        assert!(error.contains("Rez smoke test"));
+        assert!(error.contains("broken"));
     }
 
     #[test]
