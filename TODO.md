@@ -6,15 +6,15 @@
 - [x] Define the complete command and argument hierarchy with clap.
 - [x] Make all unimplemented leaf commands fail with clear nonzero errors.
 - [x] Support standard help and `-v`/`--version` output.
-- [x] Implement `rezup list` using published Rez GitHub releases.
+- [x] Implement `rezup list` using published rez GitHub releases.
 - [x] Support paginated, human-readable, and JSON version listings.
 - [x] Add a shared HTTP client with a `rezup/<version>` user agent and request timeout.
 - [x] Add focused CLI, pagination, draft-filtering, and output-format tests.
-- [x] Implement initial `rezup install` support for latest or selected Rez and managed Python on the current host.
-- [x] Install latest or selected host-compatible Python Build Standalone runtimes as Rez packages.
-- [x] Support version, mode, architecture, microarchitecture, platform, libc, and repository selectors for Python Rez packages.
-- [x] Give Python mode, libc implementation, and x86-64 microarchitecture solver-visible identities using Rez ephemerals.
-- [x] Store Python Build Standalone selection metadata in each Rez variant payload.
+- [x] Implement initial `rezup install` support for latest or selected rez and managed Python on the current host.
+- [x] Install latest or selected host-compatible Python Build Standalone runtimes as rez packages.
+- [x] Support version, mode, architecture, microarchitecture, platform, libc, and repository selectors for Python rez packages.
+- [x] Give Python mode, libc implementation, and x86-64 microarchitecture solver-visible identities using rez ephemerals.
+- [x] Store Python Build Standalone selection metadata in each rez variant payload.
 - [x] Mark managed Python installations and package payloads as externally managed according to PEP 668.
 
 ## HTTP reliability
@@ -44,17 +44,17 @@
 
 ## Installation and packages
 
-- [ ] Download and verify Rez release archives.
+- [ ] Download and verify rez release archives.
 - [ ] Download and verify managed Python artifacts.
 - [ ] For every downloaded artifact, verify published SHA-256 checksums and available signatures or SLSA attestations, then store checksums, source details, verification results, SLSA provenance, SBOMs, and related provenance documents with the installation metadata.
 - [ ] Make installation transactional and clean up partial failures.
 - [ ] Define overwrite, upgrade, downgrade, and already-installed behavior.
-- [ ] Implement Rez executable discovery from `--rez` or `PATH`.
+- [ ] Implement rez executable discovery from `--rez` or `PATH`.
 - [ ] Define package version resolution and debug/release selection behavior.
 - [ ] Read the minimum glibc symbol version from Python Build Standalone's `PYTHON.json` and represent it as a solver-visible minimum requirement.
-- [ ] Define how Rez sites inject exact host mode, libc, and x86-64 microarchitecture capabilities so unconstrained resolves cannot select incompatible variants.
-- [ ] Lock each Rez package version around the final collision check and package publication to prevent concurrent writers from targeting the same variant root.
-- [ ] Decide how a newer Python Build Standalone build of an existing Python variant should be represented and upgraded without overwriting an immutable Rez package version.
+- [ ] Define how rez sites inject exact host mode, libc, and x86-64 microarchitecture capabilities so unconstrained resolves cannot select incompatible variants.
+- [ ] Lock each rez package version around the final collision check and package publication to prevent concurrent writers from targeting the same variant root.
+- [ ] Decide how a newer Python Build Standalone build of an existing Python variant should be represented and upgraded without overwriting an immutable rez package version.
 
 ## Quality and delivery
 

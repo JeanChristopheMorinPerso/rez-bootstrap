@@ -12,7 +12,7 @@ fn top_level_help_and_version_succeed() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "Bootstrap and manage Rez installations",
+            "Bootstrap and manage rez installations",
         ))
         .stdout(predicate::str::contains("package"))
         .stdout(predicate::str::contains("\n  help").not())
@@ -91,7 +91,7 @@ fn python_package_create_parses_selectors_and_validates_before_downloading() {
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "failed to run Rez executable `/does/not/exist/rez`",
+            "failed to run rez executable `/does/not/exist/rez`",
         ))
         .stderr(predicate::str::contains("Preparing managed Python").not());
 

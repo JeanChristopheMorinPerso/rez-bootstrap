@@ -26,15 +26,15 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Bootstrap Rez and its managed Python runtime.
+    /// Bootstrap rez and its managed Python runtime.
     Bootstrap,
-    /// Install a Rez version into a prefix.
+    /// Install a rez version into a prefix.
     Install(InstallArgs),
-    /// List Rez versions available for installation.
+    /// List rez versions available for installation.
     List(ListArgs),
-    /// Update the active Rez installation.
+    /// Update the active rez installation.
     Update,
-    /// Manage packages used by Rez.
+    /// Manage packages used by rez.
     Package(PackageArgs),
     /// Manage rezup itself.
     Self_(SelfArgs),
@@ -77,7 +77,7 @@ struct ListArgs {
 
 #[derive(Debug, Args)]
 struct PackageArgs {
-    /// Path to the Rez executable (PATH lookup will be implemented later).
+    /// Path to the rez executable (PATH lookup will be implemented later).
     #[arg(long, global = true)]
     rez: Option<PathBuf>,
     #[command(subcommand)]
@@ -86,9 +86,9 @@ struct PackageArgs {
 
 #[derive(Debug, Subcommand)]
 enum PackageCommand {
-    /// Create a Rez system package.
+    /// Create a rez system package.
     Create(PackageCreateArgs),
-    /// List Rez system packages.
+    /// List rez system packages.
     List(PackageListArgs),
 }
 

@@ -40,7 +40,7 @@ pub fn create_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()
 
     create_rez_package(&rez, &payload, &python.selection, args.release)?;
     eprintln!(
-        "Created Python {} as a Rez package",
+        "Created Python {} as a rez package",
         python.selection.version
     );
     Ok(())
@@ -121,7 +121,7 @@ fn validate_rez(rez: &Path) -> Result<()> {
     let output = Command::new(rez)
         .arg("--version")
         .output()
-        .with_context(|| format!("failed to run Rez executable `{}`", rez.display()))?;
+        .with_context(|| format!("failed to run rez executable `{}`", rez.display()))?;
     if !output.status.success() {
         bail!(
             "Rez executable `{}` failed its version check with {}\n{}{}",
@@ -189,16 +189,16 @@ fn run_package_script(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .with_context(|| format!("failed to run Rez executable `{}`", rez.display()))?;
+        .with_context(|| format!("failed to run rez executable `{}`", rez.display()))?;
     child
         .stdin
         .take()
-        .context("failed to open Rez Python standard input")?
+        .context("failed to open rez Python standard input")?
         .write_all(MAKE_PYTHON_PACKAGE)
-        .context("failed to send embedded package creator to Rez Python")?;
+        .context("failed to send embedded package creator to rez Python")?;
     let output = child
         .wait_with_output()
-        .with_context(|| format!("failed to wait for Rez package {action}"))?;
+        .with_context(|| format!("failed to wait for rez package {action}"))?;
     Ok(output)
 }
 

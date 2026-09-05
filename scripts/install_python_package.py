@@ -1,4 +1,4 @@
-"""Install a prepared Python runtime as a Rez package variant."""
+"""Install a prepared Python runtime as a rez package variant."""
 
 import json
 import shutil

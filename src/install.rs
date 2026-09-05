@@ -64,7 +64,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
         ))?;
 
         let rez_version = resolve_rez_version(&args.version)?;
-        eprintln!("Installing Rez {rez_version}...");
+        eprintln!("Installing rez {rez_version}...");
         install_rez(&rez_version, &python.executable, &destination, parent)?;
         Ok(rez_version)
     })();
@@ -83,7 +83,7 @@ pub fn run(args: InstallArgs) -> Result<()> {
         }
     };
 
-    eprintln!("Installed Rez {rez_version} into {}", destination.display());
+    eprintln!("Installed rez {rez_version} into {}", destination.display());
     Ok(())
 }
 
@@ -341,7 +341,7 @@ fn resolve_rez_version(version: &str) -> Result<String> {
                 .bytes()
                 .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_'))
         {
-            bail!("invalid Rez version `{version}`");
+            bail!("invalid rez version `{version}`");
         }
         return Ok(version.to_owned());
     }
@@ -354,7 +354,7 @@ fn resolve_rez_version(version: &str) -> Result<String> {
         .error_for_status()?
         .json::<GitHubRelease>()
         .map(|release| release.tag_name)
-        .context("failed to resolve the latest Rez version")
+        .context("failed to resolve the latest rez version")
 }
 
 fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) -> Result<()> {
@@ -365,10 +365,10 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
         .get(&url)
         .send()?
         .error_for_status()
-        .with_context(|| format!("failed to download Rez {version}"))?;
+        .with_context(|| format!("failed to download rez {version}"))?;
     let mut archive_file = NamedTempFile::new_in(parent)
         .with_context(|| format!("failed to create temporary file in `{}`", parent.display()))?;
-    io::copy(&mut response, &mut archive_file).context("failed to save Rez archive")?;
+    io::copy(&mut response, &mut archive_file).context("failed to save rez archive")?;
 
     let source = TempDirBuilder::new()
         .prefix(".rezup-rez-")
@@ -381,7 +381,7 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
         })?;
     Archive::new(GzDecoder::new(archive_file.reopen()?))
         .unpack(source.path())
-        .context("failed to extract Rez archive")?;
+        .context("failed to extract rez archive")?;
     let source_root = fs::read_dir(source.path())?
         .filter_map(Result::ok)
         .map(|entry| entry.path())
@@ -436,7 +436,7 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
         .arg(destination)
         .current_dir(&source_root)
         .output()
-        .context("failed to create Rez command wrappers")?;
+        .context("failed to create rez command wrappers")?;
     if !output.status.success() {
         bail!(
             "Rez wrapper installation exited with {}\n{}{}",
@@ -455,7 +455,7 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
     eprintln!("Verifying rez installation...");
     smoke_test_rez(&rez_executable)?;
     fs::write(rez_commands.join(".rez_production_install"), version)
-        .context("failed to mark the Rez production installation")?;
+        .context("failed to mark the rez production installation")?;
     Ok(())
 }
 
@@ -463,7 +463,7 @@ fn smoke_test_rez(rez: &Path) -> Result<()> {
     let output = Command::new(rez)
         .arg("--version")
         .output()
-        .with_context(|| format!("failed to run Rez smoke test `{}`", rez.display()))?;
+        .with_context(|| format!("failed to run rez smoke test `{}`", rez.display()))?;
     if !output.status.success() {
         bail!(
             "Rez smoke test `{}` exited with {}\n{}{}",
