@@ -36,9 +36,9 @@
 - [ ] Implement `rezup bootstrap`.
 - [ ] Implement the remaining `rezup install` Python platform, architecture, microarchitecture, libc, and debug-build selectors.
 - [ ] Implement `rezup update`.
-- [ ] Implement `rezup package [--rez <path>] install arch [version] [--release]`.
-- [ ] Implement `rezup package [--rez <path>] install os [version] [--release]`.
-- [ ] Implement `rezup package [--rez <path>] install platform [version] [--release]`.
+- [ ] Implement `rezup package [--rez <path>] create arch [version] [--release]`.
+- [ ] Implement `rezup package [--rez <path>] create os [version] [--release]`.
+- [ ] Implement `rezup package [--rez <path>] create platform [version] [--release]`.
 - [ ] Implement `rezup package [--rez <path>] list [python|os|arch|platform]`.
 - [ ] Implement `rezup self update`.
 

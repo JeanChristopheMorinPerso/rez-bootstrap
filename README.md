@@ -15,7 +15,7 @@ cargo run --bin rezup -- list --json
 cargo run --bin rezup -- install /opt/rez
 cargo run --bin rezup -- install 3.4.0 /opt/rez
 cargo run --bin rezup -- install --python-version 3.13 3.4.0 /opt/rez
-cargo run --bin rezup -- package --rez /opt/rez/bin/rez/rez install python 3.13
+cargo run --bin rezup -- package --rez /opt/rez/bin/rez/rez create python 3.13
 ```
 
 Omitting the Rez version selects the latest published release. Omitting
@@ -23,7 +23,7 @@ Omitting the Rez version selects the latest published release. Omitting
 Custom Python platform, architecture, microarchitecture, libc, and debug-build
 selectors are not implemented yet.
 
-`package install python` downloads a complete managed Python runtime and installs it
+`package create python` downloads a complete managed Python runtime and creates it
 as a Rez package. Its version, debug/release mode, architecture, x86-64
 microarchitecture, platform, and libc selectors are matched against uv's Python Build
 Standalone catalogue. Platform and base architecture are stored as Rez variant

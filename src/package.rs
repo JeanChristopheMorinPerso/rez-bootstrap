@@ -12,7 +12,7 @@ use crate::{BuildMode, PythonPackageArgs};
 
 const MAKE_PYTHON_PACKAGE: &[u8] = include_bytes!("../scripts/install_python_package.py");
 
-pub fn install_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()> {
+pub fn create_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()> {
     let request = download_request(&args)?;
     let rez = rez.unwrap_or_else(|| PathBuf::from("rez"));
     validate_rez(&rez)?;
@@ -31,16 +31,16 @@ pub fn install_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<(
         return Ok(());
     }
 
-    eprintln!("Installing managed Python package payload...");
+    eprintln!("Preparing managed Python package payload...");
     let python = runtime.block_on(crate::install::install_selected_python(
         selected,
         &payload,
         staging.path(),
     ))?;
 
-    install_rez_package(&rez, &payload, &python.selection, args.release)?;
+    create_rez_package(&rez, &payload, &python.selection, args.release)?;
     eprintln!(
-        "Installed Python {} as a Rez package",
+        "Created Python {} as a Rez package",
         python.selection.version
     );
     Ok(())
@@ -134,7 +134,7 @@ fn validate_rez(rez: &Path) -> Result<()> {
     Ok(())
 }
 
-fn install_rez_package(
+fn create_rez_package(
     rez: &Path,
     payload: &Path,
     python: &SelectedPython,
@@ -143,7 +143,7 @@ fn install_rez_package(
     let output = run_package_script(rez, "install", payload, python, release)?;
     if !output.status.success() {
         bail!(
-            "Rez package installation exited with {}\n{}{}",
+            "Rez package creation exited with {}\n{}{}",
             output.status,
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
@@ -195,7 +195,7 @@ fn run_package_script(
         .take()
         .context("failed to open Rez Python standard input")?
         .write_all(MAKE_PYTHON_PACKAGE)
-        .context("failed to send embedded package installer to Rez Python")?;
+        .context("failed to send embedded package creator to Rez Python")?;
     let output = child
         .wait_with_output()
         .with_context(|| format!("failed to wait for Rez package {action}"))?;

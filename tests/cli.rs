@@ -66,13 +66,13 @@ fn install_rejects_selectors_that_are_not_implemented_yet() {
 }
 
 #[test]
-fn python_package_install_parses_selectors_and_validates_before_downloading() {
+fn python_package_create_parses_selectors_and_validates_before_downloading() {
     rezup()
         .args([
             "package",
             "--rez",
             "/does/not/exist/rez",
-            "install",
+            "create",
             "python",
             "3.12.4",
             "--mode",
@@ -92,12 +92,12 @@ fn python_package_install_parses_selectors_and_validates_before_downloading() {
         .stderr(predicate::str::contains(
             "failed to run Rez executable `/does/not/exist/rez`",
         ))
-        .stderr(predicate::str::contains("Installing managed Python").not());
+        .stderr(predicate::str::contains("Preparing managed Python").not());
 
     rezup()
         .args([
             "package",
-            "install",
+            "create",
             "python",
             "--arch",
             "aarch64",
@@ -113,7 +113,7 @@ fn python_package_install_parses_selectors_and_validates_before_downloading() {
     rezup()
         .args([
             "package",
-            "install",
+            "create",
             "python",
             "--platform",
             "windows",
@@ -130,11 +130,11 @@ fn python_package_install_parses_selectors_and_validates_before_downloading() {
 #[test]
 fn remaining_nested_package_commands_name_the_leaf_action() {
     rezup()
-        .args(["package", "install", "arch", "x86_64", "--release"])
+        .args(["package", "create", "arch", "x86_64", "--release"])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "rezup package install arch is not implemented",
+            "rezup package create arch is not implemented",
         ));
 
     rezup()
@@ -149,7 +149,15 @@ fn remaining_nested_package_commands_name_the_leaf_action() {
 #[test]
 fn nested_help_succeeds_without_stub_error() {
     rezup()
-        .args(["package", "install", "python", "--help"])
+        .args(["package", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("create"))
+        .stdout(predicate::str::contains("install").not())
+        .stderr(predicate::str::is_empty());
+
+    rezup()
+        .args(["package", "create", "python", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("--microarch"))

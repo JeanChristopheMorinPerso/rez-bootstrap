@@ -80,27 +80,27 @@ struct PackageArgs {
 
 #[derive(Debug, Subcommand)]
 enum PackageCommand {
-    /// Install a Rez system package.
-    Install(PackageInstallArgs),
+    /// Create a Rez system package.
+    Create(PackageCreateArgs),
     /// List Rez system packages.
     List(PackageListArgs),
 }
 
 #[derive(Debug, Args)]
-struct PackageInstallArgs {
+struct PackageCreateArgs {
     #[command(subcommand)]
-    command: PackageInstallCommand,
+    command: PackageCreateCommand,
 }
 
 #[derive(Debug, Subcommand)]
-enum PackageInstallCommand {
-    /// Install an architecture package.
+enum PackageCreateCommand {
+    /// Create an architecture package.
     Arch(SystemPackageArgs),
-    /// Install an operating-system package.
+    /// Create an operating-system package.
     Os(SystemPackageArgs),
-    /// Install a platform package.
+    /// Create a platform package.
     Platform(SystemPackageArgs),
-    /// Install a Python package.
+    /// Create a Python package.
     Python(PythonPackageArgs),
 }
 
@@ -177,11 +177,11 @@ impl Command {
             Command::Install(_) => "rezup install",
             Command::Update => "rezup update",
             Command::Package(package) => match package.command {
-                PackageCommand::Install(install) => match install.command {
-                    PackageInstallCommand::Arch(_) => "rezup package install arch",
-                    PackageInstallCommand::Os(_) => "rezup package install os",
-                    PackageInstallCommand::Platform(_) => "rezup package install platform",
-                    PackageInstallCommand::Python(_) => "rezup package install python",
+                PackageCommand::Create(create) => match create.command {
+                    PackageCreateCommand::Arch(_) => "rezup package create arch",
+                    PackageCreateCommand::Os(_) => "rezup package create os",
+                    PackageCreateCommand::Platform(_) => "rezup package create platform",
+                    PackageCreateCommand::Python(_) => "rezup package create python",
                 },
                 PackageCommand::List(_) => "rezup package list",
             },
@@ -205,11 +205,11 @@ impl Cli {
             Command::Package(PackageArgs {
                 rez,
                 command:
-                    PackageCommand::Install(PackageInstallArgs {
-                        command: PackageInstallCommand::Python(args),
+                    PackageCommand::Create(PackageCreateArgs {
+                        command: PackageCreateCommand::Python(args),
                     }),
-            }) => package::install_python(rez, args)
-                .map_err(|error| format!("rezup package install python failed: {error:#}")),
+            }) => package::create_python(rez, args)
+                .map_err(|error| format!("rezup package create python failed: {error:#}")),
             command => Err(format!("{} is not implemented", command.action())),
         }
     }
