@@ -9,7 +9,13 @@ mod list;
 mod package;
 
 #[derive(Debug, Parser)]
-#[command(name = "rezup", version, about, disable_version_flag = true)]
+#[command(
+    name = "rezup",
+    version,
+    about,
+    disable_version_flag = true,
+    disable_help_subcommand = true
+)]
 struct Cli {
     /// Print version.
     #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]

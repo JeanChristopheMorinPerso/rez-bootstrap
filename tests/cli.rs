@@ -15,6 +15,7 @@ fn top_level_help_and_version_succeed() {
             "Bootstrap and manage Rez installations",
         ))
         .stdout(predicate::str::contains("package"))
+        .stdout(predicate::str::contains("\n  help").not())
         .stdout(predicate::str::contains("-v, --version"))
         .stdout(predicate::str::contains("-V, --version").not())
         .stderr(predicate::str::is_empty());
@@ -154,6 +155,7 @@ fn nested_help_succeeds_without_stub_error() {
         .success()
         .stdout(predicate::str::contains("create"))
         .stdout(predicate::str::contains("install").not())
+        .stdout(predicate::str::contains("\n  help").not())
         .stderr(predicate::str::is_empty());
 
     rezup()
