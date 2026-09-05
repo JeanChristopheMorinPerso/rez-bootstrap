@@ -11,6 +11,7 @@ use crate::install::SelectedPython;
 use crate::{BuildMode, PythonPackageArgs};
 
 const MAKE_PYTHON_PACKAGE: &[u8] = include_bytes!("../scripts/install_python_package.py");
+const VARIANT_URI_PREFIX: &str = "rezup-variant-uri=";
 
 pub fn create_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()> {
     let request = download_request(&args)?;
@@ -26,8 +27,11 @@ pub fn create_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()
     let runtime = tokio::runtime::Runtime::new().context("failed to start async runtime")?;
 
     let selected = runtime.block_on(crate::install::select_python(&request))?;
-    if variant_exists(&rez, &selected, args.release)? {
-        eprintln!("Python {} variant is already installed", selected.version);
+    if let Some(uri) = existing_variant_uri(&rez, &selected, args.release)? {
+        eprintln!(
+            "Python {} variant is already installed ({uri})",
+            selected.version
+        );
         return Ok(());
     }
 
@@ -38,9 +42,9 @@ pub fn create_python(rez: Option<PathBuf>, args: PythonPackageArgs) -> Result<()
         staging.path(),
     ))?;
 
-    create_rez_package(&rez, &payload, &python.selection, args.release)?;
+    let uri = create_rez_package(&rez, &payload, &python.selection, args.release)?;
     eprintln!(
-        "Created Python {} as a rez package",
+        "Created Python {} as a rez package ({uri})",
         python.selection.version
     );
     Ok(())
@@ -139,7 +143,7 @@ fn create_rez_package(
     payload: &Path,
     python: &SelectedPython,
     release: bool,
-) -> Result<()> {
+) -> Result<String> {
     let output = run_package_script(rez, "install", payload, python, release)?;
     if !output.status.success() {
         bail!(
@@ -149,14 +153,29 @@ fn create_rez_package(
             String::from_utf8_lossy(&output.stderr)
         );
     }
-    Ok(())
+    variant_uri(&output.stdout)
 }
 
-fn variant_exists(rez: &Path, python: &SelectedPython, release: bool) -> Result<bool> {
+fn variant_uri(output: &[u8]) -> Result<String> {
+    let stdout =
+        std::str::from_utf8(output).context("rez package creator output is not valid UTF-8")?;
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix(VARIANT_URI_PREFIX))
+        .filter(|uri| !uri.is_empty())
+        .map(str::to_owned)
+        .context("rez package creator did not report the variant URI")
+}
+
+fn existing_variant_uri(
+    rez: &Path,
+    python: &SelectedPython,
+    release: bool,
+) -> Result<Option<String>> {
     let output = run_package_script(rez, "check", Path::new(""), python, release)?;
     match output.status.code() {
-        Some(0) => Ok(true),
-        Some(3) => Ok(false),
+        Some(0) => variant_uri(&output.stdout).map(Some),
+        Some(3) => Ok(None),
         _ => bail!(
             "Rez package preflight exited with {}\n{}{}",
             output.status,
@@ -216,10 +235,22 @@ mod tests {
         assert!(script.contains(".python.x86_64_level-"));
         assert!(script.contains(".python.mode=="));
         assert!(script.contains("python-build-standalone.json"));
-        assert!(script.contains("variant_exists()"));
-        assert!(script.contains("if exists:"));
+        assert!(script.contains("find_variant()"));
+        assert!(script.contains("if existing is not None:"));
         assert!(script.contains("skip_existing=False"));
+        assert!(script.contains("package.installed_variants[0].uri"));
         assert!(!script.contains("def commands"));
+    }
+
+    #[test]
+    fn extracts_variant_uri_from_script_output() {
+        assert_eq!(
+            variant_uri(b"other output\nrezup-variant-uri=/packages/python/3.13/platform-linux\n")
+                .unwrap(),
+            "/packages/python/3.13/platform-linux"
+        );
+        assert!(variant_uri(b"other output\n").is_err());
+        assert!(variant_uri(b"rezup-variant-uri=\n").is_err());
     }
 
     #[test]

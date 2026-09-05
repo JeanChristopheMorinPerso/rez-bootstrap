@@ -79,23 +79,31 @@ if base_arch == "x86_64":
 variant.extend(ephemerals)
 
 
-def variant_exists():
+def find_variant():
     package = get_package_from_repository("python", version, repository)
     if package is None:
-        return False
+        return None
     requested = tuple(str(Requirement(requirement)) for requirement in variant)
-    return any(
-        tuple(str(requirement) for requirement in existing.variant_requires) == requested
-        for existing in package.iter_variants()
+    return next(
+        (
+            existing
+            for existing in package.iter_variants()
+            if tuple(str(requirement) for requirement in existing.variant_requires)
+            == requested
+        ),
+        None,
     )
 
 
-exists = variant_exists()
+existing = find_variant()
 if action == "check":
-    sys.exit(0 if exists else 3)
+    if existing is None:
+        sys.exit(3)
+    print(f"rezup-variant-uri={existing.uri}")
+    sys.exit(0)
 if action != "install":
     raise RuntimeError(f"Unknown action: {action}")
-if exists:
+if existing is not None:
     raise RuntimeError(f"Python {version} variant already exists: {', '.join(variant)}")
 
 
@@ -104,3 +112,9 @@ with make_package("python", repository, make_root=make_root, skip_existing=False
     package.tools = ["python"]
     package.commands = commands
     package.variants = [variant]
+
+if len(package.installed_variants) != 1:
+    raise RuntimeError(
+        f"Expected one created variant, got {len(package.installed_variants)}"
+    )
+print(f"rezup-variant-uri={package.installed_variants[0].uri}")

@@ -35,7 +35,8 @@ It uses the supplied `--rez` executable, or `rez`
 from `PATH`, and installs into rez's configured local package repository by default;
 `--release` selects the configured release repository. Existing matching variants are
 detected from catalogue metadata and skipped before downloading, then checked again before
-the package payload is copied. The installed interpreter includes a PEP 668
+the package payload is copied. The completion message includes the selected variant URI whether
+the variant is newly created or already exists. The installed interpreter includes a PEP 668
 `EXTERNALLY-MANAGED` marker with a rezup-specific explanation. The embedded package-maker
 is also available at `scripts/install_python_package.py` for standalone compatibility
 testing with rez's Python.
