@@ -1,1 +1,28 @@
 /target/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Python coverage reports
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Python environments
+.venv/
+venv/
+.tox/
+.nox/
+
+# Python build and packaging output
+/build/
+/dist/
+*.egg-info/
+pip-wheel-metadata/
