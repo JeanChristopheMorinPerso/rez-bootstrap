@@ -215,6 +215,7 @@ mod tests {
         assert!(script.contains(".python.libc=="));
         assert!(script.contains(".python.x86_64_level-"));
         assert!(script.contains(".python.mode=="));
+        assert!(script.contains("python-build-standalone.json"));
         assert!(script.contains("variant_exists()"));
         assert!(!script.contains("def commands"));
     }

@@ -1,7 +1,9 @@
 """Install a prepared Python runtime as a Rez package variant."""
 
+import json
 import shutil
 import sys
+from pathlib import Path
 
 from rez.config import config
 from rez.package_maker import make_package
@@ -10,12 +12,32 @@ from rez.system import system
 from rez.version import Requirement
 
 
-action, source, version, release, _download_key, pbs_platform, pbs_arch, pbs_libc, mode = sys.argv[1:]
+action, source, version, release, download_key, pbs_platform, pbs_arch, pbs_libc, mode = sys.argv[1:]
 repository = config.release_packages_path if release == "true" else config.local_packages_path
 
 
 def make_root(_variant, root):
     shutil.copytree(source, root, dirs_exist_ok=True)
+    metadata_dir = Path(root) / ".rezup"
+    metadata_dir.mkdir()
+    (metadata_dir / "python-build-standalone.json").write_text(
+        json.dumps(
+            {
+                "architecture": pbs_arch,
+                "download_key": download_key,
+                "ephemerals": ephemerals,
+                "libc": pbs_libc,
+                "libc_version": None,
+                "microarchitecture": microarchitecture,
+                "mode": mode,
+                "platform": pbs_platform,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 commands = """\

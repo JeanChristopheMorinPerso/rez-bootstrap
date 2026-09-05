@@ -29,7 +29,9 @@ microarchitecture, platform, and libc selectors are matched against uv's Python 
 Standalone catalogue. Platform and base architecture are stored as Rez variant
 requirements. Mode and libc implementation use exact ephemeral requirements, while
 x86-64 microarchitecture uses a minimum-level ephemeral requirement. Sites must provide
-matching exact host capabilities when resolving these variants. It uses the supplied `--rez` executable, or `rez`
+matching exact host capabilities when resolving these variants. Artifact selection
+details are stored in `.rezup/python-build-standalone.json` inside each variant payload.
+It uses the supplied `--rez` executable, or `rez`
 from `PATH`, and installs into Rez's configured local package repository by default;
 `--release` selects the configured release repository. Existing matching variants are
 detected from catalogue metadata and skipped before downloading. The embedded package-maker
