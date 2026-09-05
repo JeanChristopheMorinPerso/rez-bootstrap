@@ -54,7 +54,10 @@
 - [ ] Read the minimum glibc symbol version from Python Build Standalone's `PYTHON.json` and represent it as a solver-visible minimum requirement.
 - [ ] Define how rez sites inject exact host mode, libc, and x86-64 microarchitecture capabilities so unconstrained resolves cannot select incompatible variants.
 - [ ] Lock each rez package version around the final collision check and package publication to prevent concurrent writers from targeting the same variant root.
-- [ ] Decide how a newer Python Build Standalone build of an existing Python variant should be represented and upgraded without overwriting an immutable rez package version.
+- [ ] Include `ManagedPythonDownload::build()` in the recorded artifact identity, and decide how a newer Python Build Standalone build of an existing Python variant should be represented and upgraded without overwriting an immutable rez package version.
+- [ ] Figure out what to do woth hardcoded paths in ``sysconfig`. Patching `sysconfig` to the repository URI would defeat rez’s local payload cache.
+- [ ] Relocate macOS Python dynamic-library install names and rpaths after moving the runtime into its final prefix or rez variant root.
+- [ ] Verify that every generated Python executable, standard-library path, and linker/runtime path remains valid after the temporary staging directory is removed.
 
 ## Quality and delivery
 
@@ -63,6 +66,8 @@
 - [ ] Add terminal progress bars with non-interactive CI behavior that hides them or uses stable line-oriented progress output.
 - [ ] Add platform coverage for Windows, macOS, and Linux on supported architectures.
 - [ ] Test filesystem changes, interrupted installs, and recovery paths.
+- [ ] Test the standalone embedded package-creation script against a supported matrix of Python and rez versions independently from the `rezup` executable.
+- [ ] Add end-to-end tests for multiple Python variants, solver selection, exact reinstall immutability, early download skipping, metadata sidecars, cross-target mapping, and package URI reporting.
 - [ ] Define stable JSON schemas before consumers depend on them.
 - [ ] Add release packaging and installation instructions for `rezup`.
 - [ ] Ad-hoc code-sign macOS binaries with `codesign --sign -` and document the resulting Gatekeeper limitations; Developer ID signing and notarization are not planned.
