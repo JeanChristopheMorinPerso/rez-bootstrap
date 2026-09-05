@@ -113,6 +113,23 @@ pub(crate) async fn install_python(
     destination: &Path,
     parent: &Path,
 ) -> Result<ManagedPython> {
+    let request = match version {
+        Some(version) => PythonRequest::parse(&format!("cpython@{version}")),
+        None => PythonRequest::parse("cpython"),
+    };
+    let request = PythonDownloadRequest::from_request(&request)
+        .context("Python selector cannot be represented as a managed download")?
+        .fill()
+        .context("failed to detect the host Python platform")?
+        .with_prereleases(false);
+    install_python_request(&request, destination, parent).await
+}
+
+pub(crate) async fn install_python_request(
+    request: &PythonDownloadRequest,
+    destination: &Path,
+    parent: &Path,
+) -> Result<ManagedPython> {
     let cache = Cache::temp().context("failed to create uv metadata cache")?;
     let client_builder = BaseClientBuilder::default()
         .custom_client(crate::http::async_client().context("failed to create HTTP client")?);
@@ -125,18 +142,8 @@ pub(crate) async fn install_python(
     let downloads = ManagedPythonDownloadList::new(&client_builder, &cache, None)
         .await
         .context("failed to load managed Python catalogue")?;
-
-    let request = match version {
-        Some(version) => PythonRequest::parse(&format!("cpython@{version}")),
-        None => PythonRequest::parse("cpython"),
-    };
-    let request = PythonDownloadRequest::from_request(&request)
-        .context("Python selector cannot be represented as a managed download")?
-        .fill()
-        .context("failed to detect the host Python platform")?
-        .with_prereleases(false);
     let download = downloads
-        .iter_matching(&request)
+        .iter_matching(request)
         .next()
         .context("no matching stable managed Python build is available")?;
     let version = download.key().version().to_string();

@@ -66,12 +66,12 @@ fn install_rejects_selectors_that_are_not_implemented_yet() {
 }
 
 #[test]
-fn python_package_install_rejects_unsupported_selectors_before_downloading() {
+fn python_package_install_parses_build_selectors_before_downloading() {
     rezup()
         .args([
             "package",
             "--rez",
-            "/usr/local/bin/rez",
+            "/does/not/exist/rez",
             "install",
             "python",
             "3.12.4",
@@ -81,39 +81,45 @@ fn python_package_install_rejects_unsupported_selectors_before_downloading() {
             "x86_64",
             "--microarch",
             "v2",
-            "--platform",
-            "linux",
-            "--libc",
-            "glibc",
             "--release",
         ])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "custom Python platform, architecture, microarchitecture, and libc selectors are not implemented yet",
+            "failed to run Rez executable `/does/not/exist/rez`",
         ))
-        .stderr(predicate::str::contains("is not implemented").not());
+        .stderr(predicate::str::contains("Installing managed Python").not());
 
     rezup()
-        .args(["package", "install", "python", "--mode", "debug"])
+        .args([
+            "package",
+            "install",
+            "python",
+            "--arch",
+            "aarch64",
+            "--microarch",
+            "v3",
+        ])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "debug managed Python builds are not implemented yet",
+            "Python microarchitecture `v3` is only supported with x86_64",
         ));
 
     rezup()
         .args([
             "package",
-            "--rez",
-            "/does/not/exist/rez",
             "install",
             "python",
+            "--platform",
+            "linux",
+            "--libc",
+            "glibc",
         ])
         .assert()
         .failure()
         .stderr(predicate::str::contains(
-            "failed to run Rez executable `/does/not/exist/rez`",
+            "custom Python platform and libc selectors are not implemented yet",
         ))
         .stderr(predicate::str::contains("Installing managed Python").not());
 }
