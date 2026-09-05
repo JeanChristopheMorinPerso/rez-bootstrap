@@ -408,12 +408,8 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
 
     let staged_site_packages = find_directory(&staged_rez, "site-packages")
         .context("Rez installation does not contain site-packages")?;
-    let relative_site_packages = staged_site_packages.strip_prefix(&staged_rez)?;
-    merge_directory(
-        &staged_site_packages,
-        &destination.join(relative_site_packages),
-    )?;
-    let destination_site_packages = destination.join(relative_site_packages);
+    let destination_site_packages = python_purelib(python, destination)?;
+    merge_directory(&staged_site_packages, &destination_site_packages)?;
     if let Some(dist_info) = fs::read_dir(&destination_site_packages)?
         .filter_map(Result::ok)
         .find(|entry| {
@@ -458,6 +454,46 @@ fn install_rez(version: &str, python: &Path, destination: &Path, parent: &Path) 
     fs::write(rez_bin.join(".rez_production_install"), version)
         .context("failed to mark the Rez production installation")?;
     Ok(())
+}
+
+fn python_purelib(python: &Path, destination: &Path) -> Result<PathBuf> {
+    let output = Command::new(python)
+        .args([
+            "-c",
+            "import sysconfig; print(sysconfig.get_path('purelib'))",
+        ])
+        .output()
+        .with_context(|| {
+            format!(
+                "failed to query `{}` for its purelib path",
+                python.display()
+            )
+        })?;
+    if !output.status.success() {
+        bail!(
+            "Python purelib query exited with {}\n{}{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let path = std::str::from_utf8(&output.stdout)
+        .context("Python purelib path is not valid UTF-8")?
+        .trim();
+    validate_install_path(path, destination)
+}
+
+fn validate_install_path(path: &str, destination: &Path) -> Result<PathBuf> {
+    let path = PathBuf::from(path);
+    if path.as_os_str().is_empty() || !path.is_absolute() || !path.starts_with(destination) {
+        bail!(
+            "Python reported invalid installation path `{}` outside `{}`",
+            path.display(),
+            destination.display()
+        );
+    }
+    Ok(path)
 }
 
 fn find_directory(root: &Path, name: &str) -> Option<PathBuf> {
@@ -521,6 +557,19 @@ mod tests {
             fs::read_to_string(destination.path().join("existing")).unwrap(),
             "destination"
         );
+    }
+
+    #[test]
+    fn accepts_only_python_install_paths_inside_the_prefix() {
+        let prefix = tempfile::tempdir().unwrap();
+        let site_packages = prefix.path().join("lib/python3.14/site-packages");
+        assert_eq!(
+            validate_install_path(site_packages.to_str().unwrap(), prefix.path()).unwrap(),
+            site_packages
+        );
+        assert!(validate_install_path("lib/python3.14/site-packages", prefix.path()).is_err());
+        let outside = prefix.path().with_extension("outside");
+        assert!(validate_install_path(outside.to_str().unwrap(), prefix.path()).is_err());
     }
 
     #[test]
