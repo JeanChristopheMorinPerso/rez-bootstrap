@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Linux x86-64
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Rust
+        run: rustup toolchain install 1.96.0 --profile minimal
+      - name: Build release binary
+        run: cargo +1.96.0 build --locked --release --bin rezup
+      - name: Check binary
+        run: ./target/release/rezup --version
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          path: target/release/rezup
+          archive: false
+          if-no-files-found: error
