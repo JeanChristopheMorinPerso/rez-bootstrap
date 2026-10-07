@@ -40,6 +40,8 @@ jobs:
         run: cargo +1.96.0 build --locked --release --bin rezup
       - name: Check binary
         run: ./target/release/${{ matrix.binary }} --version
+      - name: Run end-to-end tests
+        run: python scripts/test_e2e.py ./target/release/${{ matrix.binary }}
       - name: Name artifact
         run: cp target/release/${{ matrix.binary }} ${{ matrix.artifact }}
       - name: Upload binary
