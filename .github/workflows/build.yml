@@ -7,21 +7,44 @@ on:
 
 jobs:
   build:
-    name: Linux x86-64
-    runs-on: ubuntu-24.04
+    name: build (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            binary: rezup
+            artifact: rezup-linux-x86_64
+          - runner: ubuntu-24.04-arm
+            binary: rezup
+            artifact: rezup-linux-aarch64
+          - runner: windows-2025
+            binary: rezup.exe
+            artifact: rezup-windows-x86_64.exe
+          - runner: macos-15
+            binary: rezup
+            artifact: rezup-macos-aarch64
     permissions:
       contents: read
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - name: Install Rust
         run: rustup toolchain install 1.96.0 --profile minimal
+      - name: Run tests
+        run: cargo +1.96.0 test --locked --release
       - name: Build release binary
         run: cargo +1.96.0 build --locked --release --bin rezup
       - name: Check binary
-        run: ./target/release/rezup --version
+        run: ./target/release/${{ matrix.binary }} --version
+      - name: Name artifact
+        run: cp target/release/${{ matrix.binary }} ${{ matrix.artifact }}
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
-          path: target/release/rezup
+          path: ${{ matrix.artifact }}
           archive: false
           if-no-files-found: error
