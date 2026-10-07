@@ -506,14 +506,39 @@ fn python_purelib(python: &Path, destination: &Path) -> Result<PathBuf> {
 
 fn validate_install_path(path: &str, destination: &Path) -> Result<PathBuf> {
     let path = PathBuf::from(path);
-    if path.as_os_str().is_empty() || !path.is_absolute() || !path.starts_with(destination) {
+    if path.as_os_str().is_empty() || !path.is_absolute() {
+        bail!(
+            "Python reported invalid installation path `{}`",
+            path.display()
+        );
+    }
+    let destination = fs::canonicalize(destination)
+        .with_context(|| format!("failed to resolve `{}`", destination.display()))?;
+    // Resolve aliases such as macOS's /var -> /private/var before checking containment.
+    // A managed runtime may not have a site-packages directory yet, but its parent exists.
+    let resolved = match fs::canonicalize(&path) {
+        Ok(resolved) => resolved,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => fs::canonicalize(
+            path.parent()
+                .context("installation path must have a parent")?,
+        )
+        .with_context(|| format!("failed to resolve parent of `{}`", path.display()))?
+        .join(
+            path.file_name()
+                .context("installation path must have a name")?,
+        ),
+        Err(error) => {
+            return Err(error).with_context(|| format!("failed to resolve `{}`", path.display()));
+        }
+    };
+    if !resolved.starts_with(&destination) {
         bail!(
             "Python reported invalid installation path `{}` outside `{}`",
             path.display(),
             destination.display()
         );
     }
-    Ok(path)
+    Ok(resolved)
 }
 
 fn find_directory(root: &Path, name: &str) -> Option<PathBuf> {
@@ -583,13 +608,52 @@ mod tests {
     fn accepts_only_python_install_paths_inside_the_prefix() {
         let prefix = tempfile::tempdir().unwrap();
         let site_packages = prefix.path().join("lib/python3.14/site-packages");
+        fs::create_dir_all(site_packages.parent().unwrap()).unwrap();
         assert_eq!(
             validate_install_path(site_packages.to_str().unwrap(), prefix.path()).unwrap(),
-            site_packages
+            fs::canonicalize(prefix.path())
+                .unwrap()
+                .join("lib/python3.14/site-packages")
         );
         assert!(validate_install_path("lib/python3.14/site-packages", prefix.path()).is_err());
         let outside = prefix.path().with_extension("outside");
         assert!(validate_install_path(outside.to_str().unwrap(), prefix.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn accepts_symlinked_prefixes_without_allowing_paths_outside_them() {
+        use std::os::unix::fs::symlink;
+
+        let root = tempfile::tempdir().unwrap();
+        let prefix = root.path().join("prefix");
+        let alias = root.path().join("alias");
+        let outside = root.path().join("outside");
+        fs::create_dir_all(prefix.join("lib/python3.14")).unwrap();
+        fs::create_dir(&outside).unwrap();
+        symlink(&prefix, &alias).unwrap();
+
+        let site_packages = fs::canonicalize(&prefix)
+            .unwrap()
+            .join("lib/python3.14/site-packages");
+        // Python can report a real path even when the requested prefix is an alias.
+        assert_eq!(
+            validate_install_path(site_packages.to_str().unwrap(), &alias).unwrap(),
+            site_packages
+        );
+        assert_eq!(
+            validate_install_path(
+                alias.join("lib/python3.14/site-packages").to_str().unwrap(),
+                &prefix,
+            )
+            .unwrap(),
+            site_packages
+        );
+
+        symlink(&outside, &site_packages).unwrap();
+        assert!(validate_install_path(site_packages.to_str().unwrap(), &prefix).is_err());
+        let traversal = prefix.join("../outside");
+        assert!(validate_install_path(traversal.to_str().unwrap(), &prefix).is_err());
     }
 
     #[cfg(unix)]
